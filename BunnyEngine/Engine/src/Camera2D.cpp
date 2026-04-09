@@ -1,4 +1,4 @@
-#include "Camera2D.h"
+#include "Scene/Camera2D.h"
 #include <algorithm>
 
 void Camera2D::Update(float viewportWidth, float viewportHeight)

@@ -5,47 +5,109 @@
 #include <imgui_impl_opengl3.h>
 #include <imgui_internal.h>
 #include <iostream>
-#include "Framebuffer.h"
-#include "Scene.h"
-#include "Renderer2D.h"
 #include <glm/gtc/matrix_transform.hpp>
-#include "Camera2D.h"
-#include "SpriteSheet.h"
 
-static int g_WindowWidth = 1280;
-static int g_WindowHeight = 720;
+#include "Renderer/Framebuffer.h"
+#include "Renderer/Renderer2D.h"
+#include "Scene/Camera2D.h"
+#include "Core/SceneManager.h"
+#include "Core/IScene.h"
 
-// Global framebuffer
+// -------------------------------------------------------
+// Globals
+// -------------------------------------------------------
+static int  g_WindowWidth = 1280;
+static int  g_WindowHeight = 720;
+static bool g_ViewportHovered = false;
+
 static Framebuffer* g_Framebuffer = nullptr;
-static Scene* g_Scene = nullptr;
-static int    g_SelectedEntity = -1; // id of selected entity, -1 = none
 static Renderer2D* g_Renderer = nullptr;
-static Camera2D g_Camera;
-static bool     g_ViewportHovered = false; // only pan/zoom when mouse is over viewport
-static SpriteSheet* g_BunnySheet = nullptr;
-static float        g_AnimTimer = 0.0f;
-static int          g_AnimFrame = 0;
+static Camera2D     g_Camera;
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+// -------------------------------------------------------
+// Temporary test scene
+// -------------------------------------------------------
+class TestScene : public IScene
+{
+public:
+    TestScene(Renderer2D* renderer) : m_Renderer(renderer) {}
+
+    void OnEnter() override {
+        std::cout << "[TestScene] Entered!\n";
+    }
+
+    void OnUpdate(float deltaTime) override {
+        m_Timer += deltaTime;
+    }
+
+    void OnRenderGL() override
+    {
+        // Only OpenGL draw calls here
+        float aspect = 1280.0f / 720.0f;
+        glm::mat4 proj = glm::ortho(
+            -10.0f * aspect, 10.0f * aspect,
+            -10.0f, 10.0f, -1.0f, 1.0f
+        );
+        m_Renderer->SetViewProjection(proj);
+
+        float x = glm::sin(m_Timer) * 3.0f;
+        m_Renderer->DrawQuad(
+            { x, 0.0f },
+            { 1.0f, 1.0f },
+            m_Timer * 45.0f,
+            { 1.0f, 0.55f, 0.10f, 1.0f }
+        );
+    }
+
+    void OnRenderImGui() override
+    {
+        // Only ImGui calls here
+        ImGui::SetNextWindowPos(ImVec2(10, 10));
+        ImGui::SetNextWindowBgAlpha(0.5f);
+        ImGui::Begin("##test", nullptr,
+            ImGuiWindowFlags_NoDecoration |
+            ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::TextColored(ImVec4(1, 1, 0, 1), "SceneManager Test");
+        ImGui::Text("Current scene: %s",
+            SceneManager::Get().GetCurrentSceneName().c_str());
+        ImGui::Text("Timer: %.2f", m_Timer);
+        ImGui::End();
+    }
+
+    void OnExit() override {
+        std::cout << "[TestScene] Exited!\n";
+    }
+
+private:
+    Renderer2D* m_Renderer = nullptr;
+    float       m_Timer = 0.0f;
+};
+
+// -------------------------------------------------------
+// GLFW callbacks
+// -------------------------------------------------------
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
     g_WindowWidth = width;
     g_WindowHeight = height;
     glViewport(0, 0, width, height);
 }
 
-// Forward declarations
-void RenderDockspace();
-void RenderMenuBar();
-void RenderHierarchyPanel();
-void RenderInspectorPanel();
-void RenderAssetBrowserPanel();
-void RenderViewportPanel();
-void RenderConsolePanel();
-void SetupDefaultLayout(ImGuiID dockspace_id);
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    if (g_ViewportHovered)
+        g_Camera.OnMouseZoom((float)yoffset);
+}
 
+// -------------------------------------------------------
+// Main
+// -------------------------------------------------------
 int main()
 {
+    std::cout << "[Main] Starting...\n";
+
     if (!glfwInit()) { std::cerr << "Failed to init GLFW\n"; return -1; }
+    std::cout << "[Main] GLFW init OK\n";
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
@@ -53,34 +115,36 @@ int main()
     glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
 
     GLFWwindow* window = glfwCreateWindow(g_WindowWidth, g_WindowHeight,
-        "BunnyEngine - Carrot Heist", nullptr, nullptr);
-    if (!window) { glfwTerminate(); return -1; }
+        "Carrot Heist", nullptr, nullptr);
+    if (!window) { std::cerr << "Failed to create window\n"; glfwTerminate(); return -1; }
+    std::cout << "[Main] Window created OK\n";
 
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetScrollCallback(window, scroll_callback);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         std::cerr << "Failed to init glad\n"; return -1;
     }
+    std::cout << "[Main] Glad init OK\n";
 
-    // Create framebuffer at a default size
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    std::cout << "[Main] Creating Framebuffer...\n";
+    g_Framebuffer = new Framebuffer(1280, 720);
+    std::cout << "[Main] Framebuffer OK\n";
+
+    std::cout << "[Main] Creating Renderer...\n";
+    g_Renderer = new Renderer2D();
+    g_Renderer->Init();
+    std::cout << "[Main] Renderer OK\n";
+
+    // Init renderer and framebuffer
     g_Framebuffer = new Framebuffer(1280, 720);
     g_Renderer = new Renderer2D();
     g_Renderer->Init();
-    g_BunnySheet = new SpriteSheet("Assets/Textures/bunny_idle.png", 64, 64);
-    g_BunnySheet = new SpriteSheet("Assets/Textures/bunny_idle.png", 64, 64);
-    glfwSetScrollCallback(window, scroll_callback);
-
-    // Create scene with starter entities
-    g_Scene = new Scene("Level_01");
-    g_Scene->AddEntity("Toast (Player)").transform.position = { 0.0f,  0.0f };
-    g_Scene->AddEntity("Tofu (Player)").transform.position = { 1.0f,  0.0f };
-    g_Scene->AddEntity("Toffee (Player)").transform.position = { -1.0f,  0.0f };
-    g_Scene->AddEntity("Garden_Tilemap").transform.position = { 0.0f,  0.0f };
-    g_Scene->AddEntity("Guard_01").transform.position = { 3.0f,  2.0f };
-    g_Scene->AddEntity("Guard_02").transform.position = { -3.0f,  2.0f };
-    g_Scene->AddEntity("Carrot_01").transform.position = { 0.0f,  3.0f };
 
     // Init ImGui
     IMGUI_CHECKVERSION();
@@ -111,105 +175,41 @@ int main()
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 460");
 
+    // Register and start test scene
+    SceneManager::Get().RegisterScene("Test", new TestScene(g_Renderer));
+    SceneManager::Get().SwitchTo("Test");
+
+    float lastTime = 0.0f;
+
+    // Game loop
+    // Game loop
     while (!glfwWindowShouldClose(window))
     {
+        float currentTime = (float)glfwGetTime();
+        float deltaTime = currentTime - lastTime;
+        lastTime = currentTime;
+
         glfwPollEvents();
 
-        // --- Camera input (only when viewport is hovered) ---
-        if (g_ViewportHovered)
-        {
-            // Middle mouse pan
-            static double lastMouseX = 0, lastMouseY = 0;
-            double mouseX, mouseY;
-            glfwGetCursorPos(window, &mouseX, &mouseY);
-
-            if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS)
-            {
-                float dx = (float)(mouseX - lastMouseX);
-                float dy = (float)(mouseY - lastMouseY);
-                g_Camera.OnMousePan(dx, dy);
-            }
-
-            lastMouseX = mouseX;
-            lastMouseY = mouseY;
-        }
-
-        // --- Render scene into framebuffer ---
+        // --- Render into framebuffer ---
         g_Framebuffer->Bind();
-        glClearColor(0.18f, 0.22f, 0.18f, 1.0f);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glClearColor(0.08f, 0.08f, 0.08f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Update camera with current viewport size
-        g_Camera.Update(
-            (float)g_Framebuffer->GetWidth(),
-            (float)g_Framebuffer->GetHeight()
-        );
-        g_Renderer->SetViewProjection(g_Camera.GetViewProjection());
-
-        // Animate — flip frame every 0.4 seconds
-        g_AnimTimer += 0.016f; // approx 60fps deltatime
-        if (g_AnimTimer >= 0.4f) {
-            g_AnimTimer = 0.0f;
-            g_AnimFrame = (g_AnimFrame + 1) % 2; // 2 idle frames
-        }
-
-        // Draw each entity as a colored quad
-        for (auto& entity : g_Scene->GetEntities())
-        {
-            if (!entity.active) continue;
-
-            glm::vec4 tint = glm::vec4(1.0f);
-
-            // Highlight selected
-            if (entity.id == g_SelectedEntity)
-                tint = glm::vec4(1.4f, 1.4f, 0.8f, 1.0f);
-
-            bool isBunny = entity.name.find("Toast") != std::string::npos ||
-                entity.name.find("Tofu") != std::string::npos ||
-                entity.name.find("Toffee") != std::string::npos;
-
-            if (isBunny && g_BunnySheet)
-            {
-                // Draw animated bunny sprite
-                SpriteFrame frame = g_BunnySheet->GetFrameByIndex(g_AnimFrame);
-                g_Renderer->DrawFrame(
-                    entity.transform.position,
-                    entity.transform.scale * 2.0f, // scale up so 64px looks good
-                    entity.transform.rotation,
-                    g_BunnySheet->GetTexture().GetID(),
-                    frame.uvMin,
-                    frame.uvMax,
-                    tint
-                );
-            }
-            else
-            {
-                // Non-bunny entities stay as colored quads
-                glm::vec4 color = { 0.8f, 0.8f, 0.8f, 1.0f };
-                if (entity.name.find("Guard") != std::string::npos) color = { 0.80f, 0.20f, 0.20f, 1.0f };
-                if (entity.name.find("Carrot") != std::string::npos) color = { 1.00f, 0.55f, 0.10f, 1.0f };
-                if (entity.name.find("Tilemap") != std::string::npos) color = { 0.25f, 0.45f, 0.25f, 1.0f };
-
-                if (entity.id == g_SelectedEntity)
-                    color = glm::vec4(glm::vec3(color) * 1.4f, 1.0f);
-
-                g_Renderer->DrawQuad(
-                    entity.transform.position,
-                    entity.transform.scale,
-                    entity.transform.rotation,
-                    color
-                );
-            }
-        }
+        // Only update and render OpenGL here (no ImGui)
+        SceneManager::Get().Update(deltaTime);
+        SceneManager::Get().RenderGL();
 
         g_Framebuffer->Unbind();
 
-        // --- Render ImGui editor ---
+        // --- ImGui ---
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
+        ImGui::NewFrame();              // <-- ImGui frame starts HERE
 
-        RenderDockspace();
+        SceneManager::Get().RenderImGui();
 
         ImGui::Render();
         glClearColor(0.08f, 0.08f, 0.08f, 1.0f);
@@ -219,11 +219,11 @@ int main()
         glfwSwapBuffers(window);
     }
 
+    // Cleanup
+    SceneManager::Get().Shutdown();
     g_Renderer->Shutdown();
     delete g_Renderer;
-    delete g_Scene;
     delete g_Framebuffer;
-    delete g_BunnySheet;
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
@@ -231,278 +231,4 @@ int main()
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;
-}
-
-void SetupDefaultLayout(ImGuiID dockspace_id)
-{
-    ImGui::DockBuilderRemoveNode(dockspace_id);
-    ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
-    ImGui::DockBuilderSetNodeSize(dockspace_id, ImGui::GetMainViewport()->WorkSize);
-
-    ImGuiID dock_main = dockspace_id;
-    ImGuiID dock_left = ImGui::DockBuilderSplitNode(dock_main, ImGuiDir_Left, 0.20f, nullptr, &dock_main);
-    ImGuiID dock_right = ImGui::DockBuilderSplitNode(dock_main, ImGuiDir_Right, 0.25f, nullptr, &dock_main);
-    ImGuiID dock_bottom = ImGui::DockBuilderSplitNode(dock_main, ImGuiDir_Down, 0.25f, nullptr, &dock_main);
-
-    ImGui::DockBuilderDockWindow("Hierarchy", dock_left);
-    ImGui::DockBuilderDockWindow("Viewport", dock_main);
-    ImGui::DockBuilderDockWindow("Inspector", dock_right);
-    ImGui::DockBuilderDockWindow("Asset Browser", dock_bottom);
-    ImGui::DockBuilderDockWindow("Console", dock_bottom);
-
-    ImGui::DockBuilderFinish(dockspace_id);
-}
-
-void RenderDockspace()
-{
-    const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::SetNextWindowPos(viewport->WorkPos);
-    ImGui::SetNextWindowSize(viewport->WorkSize);
-    ImGui::SetNextWindowViewport(viewport->ID);
-
-    ImGuiWindowFlags dockspace_flags =
-        ImGuiWindowFlags_NoDocking |
-        ImGuiWindowFlags_NoTitleBar |
-        ImGuiWindowFlags_NoCollapse |
-        ImGuiWindowFlags_NoResize |
-        ImGuiWindowFlags_NoMove |
-        ImGuiWindowFlags_MenuBar;
-
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-
-    ImGui::Begin("##DockspaceRoot", nullptr, dockspace_flags);
-    ImGui::PopStyleVar(3);
-
-    RenderMenuBar();
-
-    ImGuiID dockspace_id = ImGui::GetID("MainDockspace");
-
-    static bool layout_initialized = false;
-    if (!layout_initialized) {
-        SetupDefaultLayout(dockspace_id);
-        layout_initialized = true;
-    }
-
-    ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
-    ImGui::End();
-
-    RenderHierarchyPanel();
-    RenderViewportPanel();
-    RenderInspectorPanel();
-    RenderAssetBrowserPanel();
-    RenderConsolePanel();
-}
-
-void RenderMenuBar()
-{
-    if (ImGui::BeginMenuBar()) {
-        if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("New Scene", "Ctrl+N")) {}
-            if (ImGui::MenuItem("Open Scene", "Ctrl+O")) {}
-            if (ImGui::MenuItem("Save Scene", "Ctrl+S")) {}
-            ImGui::Separator();
-            if (ImGui::MenuItem("Exit", "Alt+F4")) { exit(0); }
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Edit")) {
-            if (ImGui::MenuItem("Undo", "Ctrl+Z")) {}
-            if (ImGui::MenuItem("Redo", "Ctrl+Y")) {}
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("View")) {
-            if (ImGui::MenuItem("Hierarchy")) {}
-            if (ImGui::MenuItem("Inspector")) {}
-            if (ImGui::MenuItem("Asset Browser")) {}
-            if (ImGui::MenuItem("Console")) {}
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Help")) {
-            if (ImGui::MenuItem("About BunnyEngine")) {}
-            ImGui::EndMenu();
-        }
-        ImGui::EndMenuBar();
-    }
-}
-
-void RenderHierarchyPanel()
-{
-    ImGui::Begin("Hierarchy");
-
-    ImGui::Text("Scene: %s", g_Scene->GetName().c_str());
-    ImGui::Separator();
-
-    // List all entities
-    for (auto& entity : g_Scene->GetEntities())
-    {
-        bool isSelected = (g_SelectedEntity == entity.id);
-
-        // Highlight selected entity
-        if (isSelected)
-            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.25f, 0.50f, 0.25f, 1.0f));
-
-        std::string label = (entity.active ? "  " : "  [hidden] ") + entity.name;
-
-        if (ImGui::Selectable(label.c_str(), isSelected))
-            g_SelectedEntity = entity.id;
-
-        if (isSelected)
-            ImGui::PopStyleColor();
-
-        // Right-click context menu per entity
-        if (ImGui::BeginPopupContextItem())
-        {
-            if (ImGui::MenuItem("Duplicate")) {
-                std::string newName = entity.name + "_copy";
-                g_Scene->AddEntity(newName).transform = entity.transform;
-            }
-            if (ImGui::MenuItem("Delete")) {
-                if (g_SelectedEntity == entity.id)
-                    g_SelectedEntity = -1;
-                g_Scene->DeleteEntity(entity.id);
-                ImGui::EndPopup();
-                break; // stop iterating — vector changed
-            }
-            ImGui::EndPopup();
-        }
-    }
-
-    ImGui::Separator();
-
-    // Add new entity button
-    if (ImGui::Button("+ Add Entity", ImVec2(-1, 0)))
-    {
-        auto& e = g_Scene->AddEntity("New Entity");
-        g_SelectedEntity = e.id;
-    }
-
-    ImGui::End();
-}
-
-void RenderInspectorPanel()
-{
-    ImGui::Begin("Inspector");
-
-    // Find selected entity
-    Entity* selected = nullptr;
-    for (auto& e : g_Scene->GetEntities()) {
-        if (e.id == g_SelectedEntity) {
-            selected = &e;
-            break;
-        }
-    }
-
-    if (!selected) {
-        ImGui::TextDisabled("No entity selected.");
-        ImGui::End();
-        return;
-    }
-
-    // Entity header
-    char nameBuf[128];
-    strncpy_s(nameBuf, selected->name.c_str(), sizeof(nameBuf));
-    if (ImGui::InputText("##name", nameBuf, sizeof(nameBuf)))
-        selected->name = nameBuf;
-
-    ImGui::SameLine();
-    ImGui::Checkbox("Active", &selected->active);
-
-    ImGui::Separator();
-    ImGui::Spacing();
-
-    // Transform component
-    if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
-    {
-        ImGui::DragFloat2("Position", &selected->transform.position.x, 0.1f);
-        ImGui::DragFloat("Rotation", &selected->transform.rotation, 0.5f);
-        ImGui::DragFloat2("Scale", &selected->transform.scale.x, 0.1f);
-    }
-
-    ImGui::Spacing();
-
-    // Placeholder components
-    if (ImGui::CollapsingHeader("Sprite Renderer"))
-    {
-        ImGui::Button("Select Sprite...", ImVec2(-1, 0));
-        static float tint[4] = { 1.f, 1.f, 1.f, 1.f };
-        ImGui::ColorEdit4("Tint", tint);
-    }
-
-    if (ImGui::CollapsingHeader("Collider"))
-    {
-        static float size[2] = { 1.f, 1.f };
-        ImGui::DragFloat2("Box Size", size, 0.1f);
-    }
-
-    ImGui::End();
-}
-
-void RenderAssetBrowserPanel()
-{
-    ImGui::Begin("Asset Browser");
-    ImGui::Text("Assets/");
-    ImGui::Separator();
-
-    const char* folders[] = { "Textures", "Scenes", "Audio", "Prefabs" };
-    for (auto& f : folders) {
-        if (ImGui::TreeNode(f)) {
-            ImGui::Text("(empty)");
-            ImGui::TreePop();
-        }
-    }
-    ImGui::End();
-}
-
-void RenderViewportPanel()
-{
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-    ImGui::Begin("Viewport");
-
-    // Track if mouse is over viewport
-    g_ViewportHovered = ImGui::IsWindowHovered();
-
-    ImVec2 viewportSize = ImGui::GetContentRegionAvail();
-
-    if (viewportSize.x > 0 && viewportSize.y > 0)
-        g_Framebuffer->Resize((int)viewportSize.x, (int)viewportSize.y);
-
-    ImGui::Image(
-        (ImTextureID)(uintptr_t)g_Framebuffer->GetTextureID(),
-        viewportSize,
-        ImVec2(0, 1),
-        ImVec2(1, 0)
-    );
-
-    // Camera info overlay
-    ImGui::SetCursorPos(ImVec2(8, 28));
-    ImGui::TextColored(ImVec4(1, 1, 1, 0.5f),
-        "Pos: (%.1f, %.1f)  Zoom: %.2fx  [MMB drag: pan | Scroll: zoom | R: reset]",
-        g_Camera.GetPosition().x,
-        g_Camera.GetPosition().y,
-        g_Camera.GetZoom()
-    );
-
-    // Reset camera on R key when viewport hovered
-    if (g_ViewportHovered && ImGui::IsKeyPressed(ImGuiKey_R))
-        g_Camera.Reset();
-
-    ImGui::End();
-    ImGui::PopStyleVar();
-}
-
-void RenderConsolePanel()
-{
-    ImGui::Begin("Console");
-    ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "[INFO]");
-    ImGui::SameLine(); ImGui::Text("BunnyEngine initialized.");
-    ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "[INFO]");
-    ImGui::SameLine(); ImGui::Text("Framebuffer ready. Viewport is live!");
-    ImGui::End();
-}
-
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-{
-    if (g_ViewportHovered)
-        g_Camera.OnMouseZoom((float)yoffset);
 }

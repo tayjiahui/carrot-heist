@@ -1,4 +1,4 @@
-#include "Framebuffer.h"
+#include "Renderer/Framebuffer.h"
 #include <iostream>
 
 Framebuffer::Framebuffer(int width, int height)

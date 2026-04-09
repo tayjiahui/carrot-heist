@@ -1,4 +1,4 @@
-#include "SpriteSheet.h"
+#include "Renderer/SpriteSheet.h"
 #include <iostream>
 
 SpriteSheet::SpriteSheet(const std::string& filepath, int frameWidth, int frameHeight)

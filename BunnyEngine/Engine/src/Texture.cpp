@@ -1,4 +1,4 @@
-#include "Texture.h"
+#include "Renderer/Texture.h"
 #include <iostream>
 
 // stb_image — define implementation only once

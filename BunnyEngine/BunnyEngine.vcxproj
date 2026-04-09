@@ -92,7 +92,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)ThirdParty\stb;$(SolutionDir)ThirdParty\glm\glm-master;$(SolutionDir)ThirdParty\imgui\imgui-master\backends;$(SolutionDir)ThirdParty\imgui\imgui-master;$(SolutionDir)ThirdParty\glad\include;$(SolutionDir)ThirdParty\GLFW\include;$(SolutionDir)Editor\include;$(SolutionDir)Engine\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Engine\include\Core;$(SolutionDir)Engine\include\Renderer;$(SolutionDir)Engine\include\Scene;$(SolutionDir)Engine\include\ECS;$(SolutionDir)ThirdParty\stb;$(SolutionDir)ThirdParty\glm\glm-master;$(SolutionDir)ThirdParty\imgui\imgui-master\backends;$(SolutionDir)ThirdParty\imgui\imgui-master;$(SolutionDir)ThirdParty\glad\include;$(SolutionDir)ThirdParty\GLFW\include;$(SolutionDir)Editor\include;$(SolutionDir)Engine\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -112,7 +112,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)ThirdParty\stb;$(SolutionDir)ThirdParty\glm\glm-master;$(SolutionDir)ThirdParty\imgui\imgui-master\backends;$(SolutionDir)ThirdParty\imgui\imgui-master;$(SolutionDir)ThirdParty\glad\include;$(SolutionDir)ThirdParty\GLFW\include;$(SolutionDir)Editor\include;$(SolutionDir)Engine\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Engine\include\Core;$(SolutionDir)Engine\include\Renderer;$(SolutionDir)Engine\include\Scene;$(SolutionDir)Engine\include\ECS;$(SolutionDir)ThirdParty\stb;$(SolutionDir)ThirdParty\glm\glm-master;$(SolutionDir)ThirdParty\imgui\imgui-master\backends;$(SolutionDir)ThirdParty\imgui\imgui-master;$(SolutionDir)ThirdParty\glad\include;$(SolutionDir)ThirdParty\GLFW\include;$(SolutionDir)Editor\include;$(SolutionDir)Engine\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -130,7 +130,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)ThirdParty\stb;$(SolutionDir)ThirdParty\glm\glm-master;$(SolutionDir)ThirdParty\imgui\imgui-master\backends;$(SolutionDir)ThirdParty\imgui\imgui-master;$(SolutionDir)ThirdParty\glad\include;$(SolutionDir)ThirdParty\GLFW\include;$(SolutionDir)Editor\include;$(SolutionDir)Engine\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Engine\include\Core;$(SolutionDir)Engine\include\Renderer;$(SolutionDir)Engine\include\Scene;$(SolutionDir)Engine\include\ECS;$(SolutionDir)ThirdParty\stb;$(SolutionDir)ThirdParty\glm\glm-master;$(SolutionDir)ThirdParty\imgui\imgui-master\backends;$(SolutionDir)ThirdParty\imgui\imgui-master;$(SolutionDir)ThirdParty\glad\include;$(SolutionDir)ThirdParty\GLFW\include;$(SolutionDir)Editor\include;$(SolutionDir)Engine\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -150,7 +150,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)ThirdParty\stb;$(SolutionDir)ThirdParty\glm\glm-master;$(SolutionDir)ThirdParty\imgui\imgui-master\backends;$(SolutionDir)ThirdParty\imgui\imgui-master;$(SolutionDir)ThirdParty\glad\include;$(SolutionDir)ThirdParty\GLFW\include;$(SolutionDir)Editor\include;$(SolutionDir)Engine\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Engine\include\Core;$(SolutionDir)Engine\include\Renderer;$(SolutionDir)Engine\include\Scene;$(SolutionDir)Engine\include\ECS;$(SolutionDir)ThirdParty\stb;$(SolutionDir)ThirdParty\glm\glm-master;$(SolutionDir)ThirdParty\imgui\imgui-master\backends;$(SolutionDir)ThirdParty\imgui\imgui-master;$(SolutionDir)ThirdParty\glad\include;$(SolutionDir)ThirdParty\GLFW\include;$(SolutionDir)Editor\include;$(SolutionDir)Engine\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -164,6 +164,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Engine\src\Camera2D.cpp" />
+    <ClCompile Include="Engine\src\Core\SceneManager.cpp" />
     <ClCompile Include="Engine\src\Framebuffer.cpp" />
     <ClCompile Include="Engine\src\main.cpp" />
     <ClCompile Include="Engine\src\Renderer2D.cpp" />
@@ -180,6 +181,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\include\Camera2D.h" />
+    <ClInclude Include="Engine\include\Core\Iscene.h" />
+    <ClInclude Include="Engine\include\Core\SceneManager.h" />
     <ClInclude Include="Engine\include\Entity.h" />
     <ClInclude Include="Engine\include\Framebuffer.h" />
     <ClInclude Include="Engine\include\Renderer2D.h" />
