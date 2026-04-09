@@ -1,0 +1,20 @@
+# Build output
+bin/
+bin-int/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.VC.db
+*.VC.opendb
+
+# ThirdParty (too large for git, document separately)
+BunnyEngine/ThirdParty/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build logs
+BunnyEngine/BunnyEngine/

@@ -1,0 +1,41 @@
+Visual Style
+A cute, slightly dark pixel art top-down game. Think cozy but mischievous — like if Untitled Goose Game had bunnies and a heist movie aesthetic. Night-time garden levels, soft moonlight, long shadows, warm lantern glows.
+
+The Vibe
+Three domestic bunnies living a secret double life as master thieves. During the day they're cute pets.
+At night they're coordinated criminals in tiny little heist outfits — little black masks, capes, maybe a beret
+for Toffee 🥐
+
+
+🐇 The Three Characters
+Toast 🍞 — warm golden-brown, the reliable leader
+
+Sturdy, methodical, slightly serious
+Thump ability — stomps to stun guards or trigger pressure plates
+
+Tofu 🤍 — soft white, the clumsy wildcard
+
+Chaotic energy, knocks things over constantly
+Binky Dash — unpredictable zigzag sprint, hard to control but unstoppable
+
+Toffee 🟫 — rich brown, the sneaky specialist
+
+Quiet, clever, always plotting
+Dig — tunnels under walls and patrol paths
+
+
+🎮 Game Feel
+
+Stealth tension — guards have vision cones, alert states (😴 → 👀 → 🚨)
+Puzzle satisfaction — each level has one elegant solution using all three bunnies
+Chaotic moments — Tofu's dash going wrong and accidentally knocking over a flowerpot, waking a guard
+Reward — post-heist screen showing loot collected, time taken, alarm triggers (star rating)
+
+🗺️ Level Progression
+Level	Location 	Difficulty 
+1	backyard		Tutorial
+2	Kitchen Counter	Easy
+3	Farmers Market	Medium
+4	Pet Shop		Medium
+5	Fancy Restaurant	Hard
+6	Carrot Vault	😈
