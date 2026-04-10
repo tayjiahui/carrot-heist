@@ -1,0 +1,75 @@
+{
+    "entities": [
+        {
+            "active": true,
+            "id": 0,
+            "name": "Tofu (Player)",
+            "position": [
+                -2.1330599784851074,
+                -2.649472951889038
+            ],
+            "rotation": 0.0,
+            "scale": [
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "active": true,
+            "id": 1,
+            "name": "Toast (Player)",
+            "position": [
+                1.6406798362731934,
+                -1.2895655632019043
+            ],
+            "rotation": 0.0,
+            "scale": [
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "active": true,
+            "id": 2,
+            "name": "Guard_01",
+            "position": [
+                3.0,
+                2.0
+            ],
+            "rotation": 0.0,
+            "scale": [
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "active": true,
+            "id": 3,
+            "name": "Guard_02",
+            "position": [
+                -4.289565563201904,
+                0.6400938034057617
+            ],
+            "rotation": 0.0,
+            "scale": [
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "active": true,
+            "id": 4,
+            "name": "Carrot_01",
+            "position": [
+                -0.2579137980937958,
+                2.3903863430023193
+            ],
+            "rotation": 0.0,
+            "scale": [
+                1.0,
+                1.0
+            ]
+        }
+    ],
+    "scene": "Level_01"
+}

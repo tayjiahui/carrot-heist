@@ -17,10 +17,10 @@ public:
     void RegisterScene(const std::string& name, IScene* scene);
     void SwitchTo(const std::string& name);
     void Update(float deltaTime);
-    void Render();
     void Shutdown();
 
     const std::string& GetCurrentSceneName() const { return m_CurrentName; }
+    IScene* GetCurrentScene() const { return m_CurrentScene; }
 
 private:
     SceneManager() = default;

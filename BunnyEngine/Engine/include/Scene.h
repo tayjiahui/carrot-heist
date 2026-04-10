@@ -28,7 +28,7 @@ public:
     }
 
     std::vector<Entity>& GetEntities() { return m_Entities; }
-    const std::string& GetName() { return m_Name; }
+    const std::vector<Entity>& GetEntities() const { return m_Entities; }
 
 private:
     std::string         m_Name;
