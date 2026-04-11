@@ -6,6 +6,10 @@ Three domestic bunnies living a secret double life as master thieves. During the
 At night they're coordinated criminals in tiny little heist outfits — little black masks, capes, maybe a beret
 for Toffee 🥐
 
+🐇 The Narrative !!!!!!!!!!!
+Master Whiskers — a legendary bunny thief, retired but now running an underground academy for aspiring bunny robbers. Toast and Tofu are his newest recruits.
+The training levels are designed to test their skills before moving to bigger heists.
+
 
 🐇 The Three Characters
 Toast 🍞 — warm golden-brown, the reliable leader
@@ -39,3 +43,19 @@ Level	Location 	Difficulty
 4	Pet Shop		Medium
 5	Fancy Restaurant	Hard
 6	Carrot Vault	😈
+
+
+
+
+
+// CODE NOTES
+
+
+===== PAUSE MENU ======
+For every new level scene, just add these 3 lines to OnEnter(): 
+
+PauseMenu::Get().Close();
+PauseMenu::Get().SetOnResume([this]() { /* resume logic */ });
+PauseMenu::Get().SetOnMainMenu([this]() {
+    SceneManager::Get().SwitchTo("MainMenu");
+});

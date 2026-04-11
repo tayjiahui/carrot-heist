@@ -11,6 +11,8 @@
 #include "Scene/Camera2D.h"
 #include "Renderer/TilemapRenderer.h"
 #include "Systems/GuardAI.h"
+#include "DialogueSystem.h"
+#include <unordered_map>
 
 class GameScene : public IScene
 {
@@ -31,6 +33,9 @@ public:
     int   m_CarrotsCollected = 0;
     int   m_CarrotsTotal = 0;
     float m_PickupRadius = 0.8f;
+    bool m_QuestComplete = false;
+
+    std::vector<int> m_BunniesEscaped;
 
 private:
     Entity* GetEntity(int id);
@@ -61,4 +66,25 @@ private:
     std::vector<int> m_BunnyIDs;
     bool             m_GameOver = false;
     bool             m_GameWon = false;
+
+    // hiding spots
+    std::unordered_map<int, bool> m_BunnyHiding;     // bunnyID -> isHiding
+    std::unordered_map<int, int>  m_BunnyHideSpot; // bunnyID -> hideSpotIndex
+
+    struct HideSpot {
+        float x, y, w, h;
+    };
+    std::vector<HideSpot> m_HideSpots;
+
+    struct NPCData {
+        std::string name;
+        glm::vec2   position;
+        float       triggerRadius;
+        std::string dialogue;
+        bool        talked = false;
+    };
+
+    std::vector<NPCData> m_NPCs;
+    bool                 m_NearNPC = false;
+    int                  m_NearNPCIdx = -1;
 };

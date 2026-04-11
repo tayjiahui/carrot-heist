@@ -5,6 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #include "Core/AudioManager.h"
+#include "GuideBook.h"
 
 MainMenuScene::MainMenuScene(Renderer2D* renderer, Framebuffer* framebuffer)
     : m_Renderer(renderer), m_Framebuffer(framebuffer) {
@@ -110,12 +111,25 @@ void MainMenuScene::OnRenderImGui()
     if (ImageBtn(m_BtnPlay, 760.0f, 98.0f, startY))
         SceneManager::Get().SwitchTo("Game");
 
-    if (ImageBtn(m_BtnGuide, 700.0f, 98.0f, startY + gap)) {}
+    if (ImageBtn(m_BtnGuide, 700.0f, 98.0f, startY + gap))
+        GuideBook::Get().Open();
 
     if (ImageBtn(m_BtnOptions, 611.0f, 98.0f, startY + gap * 2)) {}
 
     if (ImageBtn(m_BtnQuit, 520.0f, 98.0f, startY + gap * 3))
         exit(0);
+
+    // Guide book renders on top
+    ImGuiWindow* vpWin = ImGui::FindWindowByName("Viewport");
+    if (vpWin)
+    {
+        GuideBook::Get().RenderImGui(
+            vpWin->InnerRect.Min.x,
+            vpWin->InnerRect.Min.y,
+            vpWin->InnerRect.GetSize().x,
+            vpWin->InnerRect.GetSize().y
+        );
+    }
 }
 
 void MainMenuScene::OnExit()

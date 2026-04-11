@@ -4,6 +4,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #include "Core/AudioManager.h"
+#include "PauseMenu.h"
+#include <algorithm>
+#include "GuideBook.h"
 
 
 GameScene::GameScene(Renderer2D* renderer, Framebuffer* framebuffer)
@@ -23,8 +26,26 @@ void GameScene::OnEnter()
     AudioManager::Get().LoadSound("collect", "Assets/Audio/sfx_collect.mp3");
     AudioManager::Get().PlayBGM("game_bgm");
 
-    m_CarrotsTotal = (int)m_Tilemap.GetObjectsByType("Carrot").size();
-    std::cout << "[GameScene] Total carrots: " << m_CarrotsTotal << "\n";
+    m_BunnyHiding.clear();
+    m_BunnyHideSpot.clear();
+    m_BunniesEscaped.clear();
+    m_BunnyHiding[m_TofuID] = false;
+    m_BunnyHiding[m_ToastID] = false;
+    m_BunnyHideSpot[m_TofuID] = -1;
+    m_BunnyHideSpot[m_ToastID] = -1;
+    m_QuestComplete = false;
+
+    // Setup pause menu
+    PauseMenu::Get().Close();
+    PauseMenu::Get().SetOnResume([this]() {
+        std::cout << "[GameScene] Resumed\n";
+        });
+    PauseMenu::Get().SetOnMainMenu([this]() {
+        SceneManager::Get().SwitchTo("MainMenu");
+        });
+    PauseMenu::Get().SetOnGuide([this]() {
+        GuideBook::Get().Open();
+    });
 
     // Load tilemap
     if (m_Tilemap.Load("Assets/Tilemaps/level01.tmj"))
@@ -87,7 +108,54 @@ void GameScene::OnEnter()
         GetEntity(m_TofuID)->transform.position = { -1.5f, 0.0f };
         GetEntity(m_ToastID)->transform.position = { 1.5f, 0.0f };
     }
+    
+    m_CarrotsTotal = (int)m_Tilemap.GetObjectsByType("Carrot").size();
+    std::cout << "[GameScene] Total carrots: " << m_CarrotsTotal << "\n";
 
+    // Load hide spots from tilemap
+    m_HideSpots.clear();
+    for (const auto& obj : m_Tilemap.GetObjects())
+    {
+        if (obj.type != "HideSpot") continue;
+
+        const TilemapData& data = m_Tilemap.GetData();
+        float wx = obj.x * m_TileScale;
+        float wy = (data.mapHeight * data.tileHeight - obj.y) * m_TileScale;
+        float ww = obj.width * m_TileScale;
+        float wh = obj.height * m_TileScale;
+
+        m_HideSpots.push_back({ wx, wy, ww, wh });
+        std::cout << "[GameScene] HideSpot at ("
+            << wx << ", " << wy << ") size ("
+            << ww << "x" << wh << ")\n";
+    }
+    std::cout << "[GameScene] Total HideSpots: " << m_HideSpots.size() << "\n";
+
+    // Load NPCs from tilemap
+    // Load NPCs from tilemap
+    m_NPCs.clear();
+    for (const auto& obj : m_Tilemap.GetObjects())
+    {
+        if (obj.type != "NPC_Tutorial" && obj.type != "NPC") continue;
+
+        const TilemapData& data = m_Tilemap.GetData();
+        NPCData npc;
+        npc.name = obj.name;
+        npc.position = {
+            obj.x * m_TileScale,
+            (data.mapHeight * data.tileHeight - obj.y) * m_TileScale
+        };
+        npc.triggerRadius = 2.0f;
+        npc.dialogue = obj.properties.count("Dialogue")
+            ? obj.properties.at("Dialogue")
+            : "...";
+
+        m_NPCs.push_back(npc);
+        std::cout << "[GameScene] NPC: " << npc.name
+            << " at (" << npc.position.x << ", " << npc.position.y << ")\n";
+    }
+
+    DialogueSystem::Get().Reset();
     // Start with Tofu (key 1)
     m_ActiveBunnyID = m_TofuID;
     m_ActiveBunnyType = BunnyType::Tofu;
@@ -110,6 +178,14 @@ void GameScene::OnEnter()
 
 void GameScene::OnUpdate(float deltaTime)
 {
+
+    // Pause menu toggle
+    if (Input::IsKeyPressed(GLFW_KEY_ESCAPE))
+        PauseMenu::Get().Toggle();
+
+    // Block all input when paused
+    if (PauseMenu::Get().IsActive()) return;
+
     // 1. Update ability cooldowns
     AbilitySystem::Update(deltaTime);
 
@@ -215,15 +291,71 @@ void GameScene::OnUpdate(float deltaTime)
     glm::vec2 newCamPos = current + (target - current) * 5.0f * deltaTime;
     m_Camera.SetPosition(newCamPos);
 
+    // --- Hide System ---
+    Entity* activeBunny = GetEntity(m_ActiveBunnyID);
+    if (activeBunny)
+    {
+
+        bool& isHiding = m_BunnyHiding[m_ActiveBunnyID];
+        int& currentSpot = m_BunnyHideSpot[m_ActiveBunnyID];
+        // Check if active bunny is inside any hidespot
+        int insideSpot = -1;
+        for (int i = 0; i < (int)m_HideSpots.size(); i++)
+        {
+            float hx = m_HideSpots[i].x;
+            float hy = m_HideSpots[i].y - m_HideSpots[i].h;
+            float hw = m_HideSpots[i].w;
+            float hh = m_HideSpots[i].h;
+
+            glm::vec2 pos = activeBunny->transform.position;
+            if (pos.x >= hx && pos.x <= hx + hw &&
+                pos.y >= hy && pos.y <= hy + hh)
+            {
+                insideSpot = i;
+                break;
+            }
+        }
+
+        // Press H to toggle hide
+        if (Input::IsKeyPressed(GLFW_KEY_H))
+        {
+            if (insideSpot != -1)
+            {
+                isHiding = !isHiding;
+                currentSpot = isHiding ? insideSpot : -1;
+                std::cout << "[GameScene] "
+                    << (isHiding ? "Hiding!" : "Stopped hiding!") << "\n";
+            }
+            else
+            {
+                isHiding = false;
+                currentSpot = -1;
+                std::cout << "[GameScene] Not inside a hidespot!\n";
+            }
+        }
+
+        // Auto-unhide if bunny leaves the hidespot
+        if (isHiding && insideSpot == -1)
+        {
+            isHiding = false;
+            currentSpot = -1;
+            std::cout << "[GameScene] Auto-unhidden\n";
+        }
+    }
+
+
     // update guard ai
-    // Update guard AI
     if (!m_GameOver && !m_GameWon)
     {
-        GuardAISystem::Update(
-            deltaTime,
-            m_Scene->GetEntities(),
-            m_BunnyIDs
-        );
+        // Build list of visible bunny IDs (hidden bunnies are invisible to guards)
+        std::vector<int> visibleBunnies;
+        for (int id : m_BunnyIDs)
+        {
+            if (m_BunnyHiding.count(id) && m_BunnyHiding[id]) continue;
+            visibleBunnies.push_back(id);
+        }
+
+        GuardAISystem::Update(deltaTime, m_Scene->GetEntities(), visibleBunnies);
 
         // Check lose condition
         if (GuardAISystem::IsBunnyCaught())
@@ -234,33 +366,136 @@ void GameScene::OnUpdate(float deltaTime)
         }
 
         // Check win condition — all carrots collected + reach exit
-        if (m_CarrotsCollected >= m_CarrotsTotal && m_CarrotsTotal > 0)
+        // Win — reach exit after quest is complete
+        // Win — both bunnies must reach exit after quest complete
+        if (m_QuestComplete && !m_GameWon)
         {
-            // Check if active bunny is in exit zone
             auto exitZones = m_Tilemap.GetObjectsByType("Exit");
             for (const auto& exit : exitZones)
             {
+                const TilemapData& data = m_Tilemap.GetData();
                 float exitX = exit.x * m_TileScale;
-                float exitY = (m_Tilemap.GetData().mapHeight *
-                    m_Tilemap.GetData().tileHeight - exit.y) * m_TileScale;
+                float exitY = (data.mapHeight * data.tileHeight - exit.y) * m_TileScale;
                 float exitW = exit.width * m_TileScale;
                 float exitH = exit.height * m_TileScale;
 
-                Entity* bunny = GetEntity(m_ActiveBunnyID);
-                if (!bunny) continue;
+                // Check each bunny
+                for (int bunnyID : m_BunnyIDs)
+                {
+                    // Skip already escaped bunnies
+                    if (std::find(m_BunniesEscaped.begin(),
+                        m_BunniesEscaped.end(),
+                        bunnyID) != m_BunniesEscaped.end()) continue;
 
-                if (bunny->transform.position.x >= exitX &&
-                    bunny->transform.position.x <= exitX + exitW &&
-                    bunny->transform.position.y >= exitY - exitH &&
-                    bunny->transform.position.y <= exitY)
+                    Entity* bunny = GetEntity(bunnyID);
+                    if (!bunny) continue;
+
+                    if (bunny->transform.position.x >= exitX &&
+                        bunny->transform.position.x <= exitX + exitW &&
+                        bunny->transform.position.y >= exitY - exitH &&
+                        bunny->transform.position.y <= exitY)
+                    {
+                        m_BunniesEscaped.push_back(bunnyID);
+                        std::cout << "[GameScene] " << bunny->name
+                            << " escaped!\n";
+
+                        // Show message
+                        AudioManager::Get().PlaySFX("collect");
+                    }
+                }
+
+                // Win when ALL bunnies escaped
+                if ((int)m_BunniesEscaped.size() >= (int)m_BunnyIDs.size())
                 {
                     m_GameWon = true;
                     AudioManager::Get().StopBGM();
-                    std::cout << "[GameScene] YOU WIN!\n";
+                    std::cout << "[GameScene] ALL BUNNIES ESCAPED! YOU WIN!\n";
                 }
             }
         }
     }
+
+    // npc dialogue 
+    // --- NPC Dialogue ---
+    // --- NPC Dialogue ---
+    if (!DialogueSystem::Get().IsActive() && !m_GameOver && !m_GameWon)
+    {
+        m_NearNPC = false;
+        m_NearNPCIdx = -1;
+
+        Entity* bunny = GetEntity(m_ActiveBunnyID);
+        if (bunny)
+        {
+            for (int i = 0; i < (int)m_NPCs.size(); i++)
+            {
+                float dist = glm::length(
+                    bunny->transform.position - m_NPCs[i].position);
+
+                if (dist < m_NPCs[i].triggerRadius)
+                {
+                    m_NearNPC = true;
+                    m_NearNPCIdx = i;
+                    break;
+                }
+            }
+        }
+
+        // Press E to talk
+        if (m_NearNPC && Input::IsKeyPressed(GLFW_KEY_E))
+        {
+            NPCData& npc = m_NPCs[m_NearNPCIdx];
+            std::vector<DialogueLine> lines;
+
+            if (!npc.talked)
+            {
+                lines.push_back({ "Master Whiskers",
+                    "Recruits. Welcome to your first trial." });
+                lines.push_back({ "Master Whiskers",
+                    "Grandma's garden. Easy target. 8 carrots hidden inside." });
+                lines.push_back({ "Master Whiskers",
+                    "Steal them all without getting caught." });
+                lines.push_back({ "Master Whiskers",
+                    "If grandma spots you, hide in the bushes. Press H." });
+                lines.push_back({ "Master Whiskers",
+                    "Switch between recruits with 1 and 2." });
+                lines.push_back({ "Master Whiskers",
+                    "Don't embarrass me. Now go." });
+                npc.talked = true;
+            }
+            else if (m_CarrotsCollected >= m_CarrotsTotal && m_CarrotsTotal > 0)
+            {
+                lines.push_back({ "Master Whiskers",
+                    "Not bad for beginners." });
+                lines.push_back({ "Master Whiskers",
+                    "Now get to the burrow. Both of you." });
+                lines.push_back({ "Master Whiskers",
+                    "Leave no bunny behind. That's the code." });
+
+                DialogueSystem::Get().StartDialogue(lines, [this]() {
+                    m_QuestComplete = true;
+                    });
+                return;
+            }
+            else
+            {
+                int remaining = m_CarrotsTotal - m_CarrotsCollected;
+                lines.push_back({ "Master Whiskers",
+                    std::to_string(remaining) + " carrot(s) still out there." });
+                lines.push_back({ "Master Whiskers",
+                    "A true thief leaves nothing behind. Keep looking." });
+            }
+
+            DialogueSystem::Get().StartDialogue(lines);
+        }
+    }
+
+    // Update dialogue
+    DialogueSystem::Get().Update(deltaTime);
+
+    // Advance dialogue with E
+    if (DialogueSystem::Get().IsActive() &&
+        Input::IsKeyPressed(GLFW_KEY_E))
+        DialogueSystem::Get().Advance();
 }
 
 void GameScene::OnRenderGL()
@@ -280,10 +515,14 @@ void GameScene::OnRenderGL()
         if (entity.name.find("Tofu") != std::string::npos) color = { 0.95f, 0.95f, 0.90f, 1.0f };
         if (entity.name.find("Toast") != std::string::npos) color = { 0.95f, 0.85f, 0.60f, 1.0f };
         if (entity.name.find("Guard") != std::string::npos) color = { 0.80f, 0.20f, 0.20f, 1.0f };
+        if (entity.name.find("Grandma") != std::string::npos) color = { 0.80f, 0.20f, 0.20f, 1.0f };
         if (entity.name.find("Carrot") != std::string::npos) color = { 1.00f, 0.55f, 0.10f, 1.0f };
 
         if (entity.id == m_ActiveBunnyID)
             color = glm::vec4(glm::vec3(color) * 1.5f, 1.0f);
+
+        if (m_BunnyHiding.count(entity.id) && m_BunnyHiding[entity.id])
+            color = glm::vec4(0.3f, 0.5f, 1.0f, 0.6f);
 
         m_Renderer->DrawQuad(
             entity.transform.position,
@@ -291,6 +530,25 @@ void GameScene::OnRenderGL()
             entity.transform.rotation,
             color
         );
+    }
+
+    // Draw hidespot outlines so player can see them
+    for (auto& spot : m_HideSpots)
+    {
+        float hx = spot.x + spot.w * 0.5f;
+        float hy = spot.y - spot.h * 0.5f;
+        float hw = spot.w;
+        float hh = spot.h;
+
+        // Green outline when not hiding, blue when hiding
+        bool activeIsHiding = m_BunnyHiding.count(m_ActiveBunnyID)
+            && m_BunnyHiding[m_ActiveBunnyID];
+
+        glm::vec4 spotColor = activeIsHiding
+            ? glm::vec4(0.3f, 0.5f, 1.0f, 0.2f)
+            : glm::vec4(0.2f, 0.8f, 0.2f, 0.15f);
+
+        m_Renderer->DrawQuad({ hx, hy }, { hw, hh }, 0.0f, spotColor);
     }
 }
 
@@ -343,6 +601,54 @@ void GameScene::OnRenderImGui()
         ImGui::PopStyleColor();
     }
 
+    // Hide status
+    ImGui::SetCursorScreenPos(ImVec2(vpPos.x + 10, vpPos.y + 50));
+    bool activeIsHiding = m_BunnyHiding.count(m_ActiveBunnyID)
+        && m_BunnyHiding[m_ActiveBunnyID];
+
+    if (activeIsHiding)
+        ImGui::TextColored(ImVec4(0.3f, 0.5f, 1.0f, 1.0f), "HIDING [H to unhide]");
+    else
+    {
+        Entity* b = GetEntity(m_ActiveBunnyID);
+        bool nearSpot = false;
+        if (b)
+        {
+            for (auto& spot : m_HideSpots)
+            {
+                float hx = spot.x;
+                float hy = spot.y - spot.h;
+                if (b->transform.position.x >= hx &&
+                    b->transform.position.x <= hx + spot.w &&
+                    b->transform.position.y >= hy &&
+                    b->transform.position.y <= hy + spot.h)
+                {
+                    nearSpot = true;
+                    break;
+                }
+            }
+        }
+        if (nearSpot)
+            ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.2f, 1.0f), "Press H to hide");
+    }
+
+    // NPC interaction prompt
+    if (m_NearNPC && !DialogueSystem::Get().IsActive()
+        && !m_GameOver && !m_GameWon)
+    {
+        ImGui::SetCursorScreenPos(
+            ImVec2(vpPos.x + vpSize.x * 0.5f - 60,
+                vpPos.y + vpSize.y * 0.5f - 60));
+        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f),
+            "[ E ] Talk");
+    }
+
+    // Dialogue box
+    DialogueSystem::Get().RenderImGui(
+        vpPos.x, vpPos.y, vpSize.x, vpSize.y);
+
+
+
     // Game Over screen
     if (m_GameOver)
     {
@@ -358,6 +664,18 @@ void GameScene::OnRenderImGui()
         ImGui::SetCursorScreenPos(ImVec2(center.x, center.y + 110));
         if (ImGui::Button("Main Menu", ImVec2(200, 40)))
             SceneManager::Get().SwitchTo("MainMenu");
+    }
+
+    // Escape progress when quest complete
+    if (m_QuestComplete && !m_GameWon)
+    {
+        ImGui::SetCursorScreenPos(
+            ImVec2(vpPos.x + vpSize.x * 0.5f - 100,
+                vpPos.y + 10));
+        ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f),
+            "Get both bunnies to the burrow! (%d/%d escaped)",
+            (int)m_BunniesEscaped.size(),
+            (int)m_BunnyIDs.size());
     }
 
     // Win screen
@@ -381,6 +699,10 @@ void GameScene::OnRenderImGui()
     ImGui::SetCursorScreenPos(ImVec2(vpPos.x + 10, vpPos.y + vpSize.y - 30.0f));
     if (ImGui::Button("< Main Menu"))
         SceneManager::Get().SwitchTo("MainMenu");
+
+    // Pause menu renders on top of everything
+    PauseMenu::Get().RenderImGui(
+        vpPos.x, vpPos.y, vpSize.x, vpSize.y);
 }
 
 void GameScene::OnExit()

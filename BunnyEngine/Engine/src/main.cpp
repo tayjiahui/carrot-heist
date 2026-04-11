@@ -21,6 +21,7 @@
 #include "Core/EditorInteraction.h"
 #include "Core/SceneSerializer.h"
 #include "Core/AudioManager.h"
+#include "GuideBook.h"
 
 // -------------------------------------------------------
 // Globals
@@ -338,6 +339,16 @@ int main()
     std::cout << "[Main] Creating Renderer...\n";
     g_Renderer = new Renderer2D();
     g_Renderer->Init();
+    GuideBook::Get().Init(
+        "Assets/Textures/Close_button.png",
+        "Assets/Textures/Carrot_Next.png",
+        "Assets/Textures/Carrot_Prev.png",
+        {
+            "Assets/Textures/Bookpg1-2.png",
+            "Assets/Textures/Bookpg3-4.png",
+            "Assets/Textures/Bookpg5-6.png"
+        }
+    );
     std::cout << "[Main] Renderer OK\n";
     AudioManager::Get().Init();
 
@@ -419,6 +430,7 @@ int main()
     // Cleanup
     AudioManager::Get().Shutdown();
     SceneManager::Get().Shutdown();
+    GuideBook::Get().Shutdown();
     g_Renderer->Shutdown();
     delete g_Renderer;
     delete g_Framebuffer;

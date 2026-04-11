@@ -28,11 +28,7 @@ void GuardAISystem::Init(
         PatrolRoute route;
         route.name = obj.name;
 
-        // Base position
-        float baseX = obj.x * tileScale;
-        float baseY = (mapHeight * tileHeight - obj.y) * tileScale;
-
-        // Read waypoints stored as wp_0, wp_1, etc
+        // Read waypoints stored as wp_0, wp_1 etc
         int i = 0;
         while (true)
         {
@@ -46,16 +42,20 @@ void GuardAISystem::Init(
             float px = std::stof(val.substr(0, comma));
             float py = std::stof(val.substr(comma + 1));
 
-            // Waypoints are relative to polyline origin
+            // Waypoints are relative to polyline origin in Tiled
             float wx = (obj.x + px) * tileScale;
             float wy = (mapHeight * tileHeight - (obj.y + py)) * tileScale;
             route.waypoints.push_back({ wx, wy });
             i++;
         }
 
-        // Fallback if no waypoints parsed
+        // Fallback — use object position as single waypoint
         if (route.waypoints.empty())
-            route.waypoints.push_back({ baseX, baseY });
+        {
+            float wx = obj.x * tileScale;
+            float wy = (mapHeight * tileHeight - obj.y) * tileScale;
+            route.waypoints.push_back({ wx, wy });
+        }
 
         s_PatrolRoutes.push_back(route);
         std::cout << "[GuardAI] Route: " << route.name
@@ -68,7 +68,8 @@ void GuardAISystem::Init(
         if (obj.type != "Guard") continue;
 
         GuardData guard;
-        guard.entityID = -1; // will be set when entities are created
+        guard.entityID = -1;
+        guard.guardName = obj.name; // store name for entity matching
 
         // Read custom properties
         if (obj.properties.count("vision_range"))
@@ -80,12 +81,8 @@ void GuardAISystem::Init(
         if (obj.properties.count("patrol_route"))
             guard.patrolRouteName = obj.properties.at("patrol_route");
 
-        // Match guard name to entity
-        guard.patrolRouteName = obj.properties.count("patrol_route")
-            ? obj.properties.at("patrol_route") : "";
-
         s_Guards.push_back(guard);
-        std::cout << "[GuardAI] Loaded guard: " << obj.name
+        std::cout << "[GuardAI] Guard: " << guard.guardName
             << " patrol: " << guard.patrolRouteName << "\n";
     }
 }
@@ -95,23 +92,26 @@ void GuardAISystem::Update(
     std::vector<Entity>& entities,
     const std::vector<int>& bunnyIDs)
 {
-    // Match guard data to entities by name
     for (auto& guard : s_Guards)
     {
+        // Match guard to entity by name
         if (guard.entityID == -1)
         {
             for (auto& e : entities)
             {
-                if (e.name.find("Grandma") != std::string::npos ||
-                    e.name.find("Guard") != std::string::npos)
+                if (e.name == guard.guardName)
                 {
                     guard.entityID = e.id;
+                    std::cout << "[GuardAI] Matched guard "
+                        << guard.guardName << " to entity ID "
+                        << guard.entityID << "\n";
                     break;
                 }
             }
         }
 
-        UpdateGuard(guard, deltaTime, entities, bunnyIDs);
+        if (guard.entityID != -1)
+            UpdateGuard(guard, deltaTime, entities, bunnyIDs);
     }
 }
 
@@ -143,39 +143,53 @@ void GuardAISystem::UpdateGuard(
     {
     case GuardState::Patrol:
     {
-        // Move towards current waypoint
         glm::vec2 waypoint = GetWaypoint(guard);
         glm::vec2 dir = waypoint - guardEntity->transform.position;
-        float dist = glm::length(dir);
+        float     dist = glm::length(dir);
 
-        if (dist > 0.1f)
+        if (dist > 0.15f)
         {
             dir = glm::normalize(dir);
             guardEntity->transform.position += dir * guard.speed * deltaTime;
-
-            // Update facing angle
             guard.facing = glm::degrees(std::atan2(dir.y, dir.x));
         }
         else
         {
-            // Reached waypoint — move to next
-            if (guard.patrolForward)
+            // Reached waypoint — advance to next
+            for (auto& route : s_PatrolRoutes)
             {
-                guard.currentWaypoint++;
-                // Find patrol route
-                for (auto& route : s_PatrolRoutes)
+                if (route.name == guard.patrolRouteName)
                 {
-                    if (route.name == guard.patrolRouteName)
+                    int total = (int)route.waypoints.size();
+
+                    if (guard.patrolForward)
                     {
-                        if (guard.currentWaypoint >= (int)route.waypoints.size())
-                            guard.currentWaypoint = 0;
-                        break;
+                        guard.currentWaypoint++;
+                        if (guard.currentWaypoint >= total)
+                        {
+                            guard.currentWaypoint = total - 2; // step back
+                            guard.patrolForward = false;
+                        }
                     }
+                    else
+                    {
+                        guard.currentWaypoint--;
+                        if (guard.currentWaypoint < 0)
+                        {
+                            guard.currentWaypoint = 1; // step forward
+                            guard.patrolForward = true;
+                        }
+                    }
+
+                    std::cout << "[GuardAI] Waypoint -> "
+                        << guard.currentWaypoint
+                        << (guard.patrolForward ? " (fwd)" : " (bwd)") << "\n";
+                    break;
                 }
             }
         }
 
-        // Transition to suspicious if bunny spotted
+        // Transition to suspicious
         if (spottedBunnyID != -1)
         {
             guard.state = GuardState::Suspicious;
@@ -188,17 +202,26 @@ void GuardAISystem::UpdateGuard(
 
     case GuardState::Suspicious:
     {
-        // Slow down and look around
         guard.suspiciousTimer -= deltaTime;
 
-        // Keep looking at last known position
+        // If bunny hid — go back to patrol immediately
+        bool targetVisible = false;
+        for (int id : bunnyIDs)
+            if (id == guard.targetBunnyID) { targetVisible = true; break; }
+
+        if (!targetVisible)
+        {
+            guard.state = GuardState::Patrol;
+            std::cout << "[GuardAI] Bunny hid! Guard back to patrol.\n";
+            break;
+        }
+
         glm::vec2 dir = guard.lastKnownPos - guardEntity->transform.position;
         if (glm::length(dir) > 0.01f)
             guard.facing = glm::degrees(std::atan2(dir.y, dir.x));
 
         if (spottedBunnyID != -1)
         {
-            // Confirmed sighting — go alerted
             guard.state = GuardState::Alerted;
             guard.alertTimer = 5.0f;
             guard.targetBunnyID = spottedBunnyID;
@@ -206,7 +229,6 @@ void GuardAISystem::UpdateGuard(
         }
         else if (guard.suspiciousTimer <= 0.0f)
         {
-            // Lost sight — go back to patrol
             guard.state = GuardState::Patrol;
             std::cout << "[GuardAI] Guard back to patrol\n";
         }
@@ -215,23 +237,39 @@ void GuardAISystem::UpdateGuard(
 
     case GuardState::Alerted:
     {
-        // Chase the bunny!
         Entity* target = FindEntity(entities, guard.targetBunnyID);
+
+        // Check if target bunny is still visible (not hidden)
+        bool targetVisible = false;
+        for (int id : bunnyIDs)
+            if (id == guard.targetBunnyID) { targetVisible = true; break; }
+
+        // If bunny hid — guard immediately loses them, no matter how close
+        if (!targetVisible)
+        {
+            guard.state = GuardState::Searching;
+            guard.alertTimer = 3.0f;
+            guard.targetBunnyID = -1;
+            std::cout << "[GuardAI] Bunny hid! Guard lost target.\n";
+            break;
+        }
+
+        // Update last known position
         if (target && target->active)
             guard.lastKnownPos = target->transform.position;
 
+        // Chase
         glm::vec2 dir = guard.lastKnownPos - guardEntity->transform.position;
-        float dist = glm::length(dir);
+        float     dist = glm::length(dir);
 
         if (dist > 0.01f)
         {
             dir = glm::normalize(dir);
-            // Move faster when alerted
             guardEntity->transform.position += dir * guard.speed * 1.8f * deltaTime;
             guard.facing = glm::degrees(std::atan2(dir.y, dir.x));
         }
 
-        // Catch check
+        // Catch — only when visible
         if (dist < 0.5f)
         {
             s_BunnyCaught = true;
@@ -239,7 +277,7 @@ void GuardAISystem::UpdateGuard(
             std::cout << "[GuardAI] Bunny caught!\n";
         }
 
-        // Lost sight
+        // Lost sight timer
         if (spottedBunnyID == -1)
         {
             guard.alertTimer -= deltaTime;
@@ -250,9 +288,8 @@ void GuardAISystem::UpdateGuard(
             }
         }
         else
-        {
-            guard.alertTimer = 5.0f; // reset timer if still seeing bunny
-        }
+            guard.alertTimer = 5.0f;
+
         break;
     }
 
@@ -318,6 +355,8 @@ glm::vec2 GuardAISystem::GetWaypoint(const GuardData& guard)
             return route.waypoints[idx];
         }
     }
+
+    // No route found — stay in place
     return { 0.0f, 0.0f };
 }
 

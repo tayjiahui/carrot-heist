@@ -22,6 +22,7 @@ struct PatrolRoute
 struct GuardData
 {
     int         entityID = -1;
+    std::string guardName;
     GuardState  state = GuardState::Patrol;
     float       speed = 1.5f;
     float       visionRange = 3.0f;
