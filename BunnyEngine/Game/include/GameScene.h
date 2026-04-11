@@ -9,6 +9,8 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include "Scene/Camera2D.h"
+#include "Renderer/TilemapRenderer.h"
+#include "Systems/GuardAI.h"
 
 class GameScene : public IScene
 {
@@ -25,6 +27,10 @@ public:
 
     std::vector<Entity>* GetEntities()  override;
     const std::string& GetSceneName() override;
+
+    int   m_CarrotsCollected = 0;
+    int   m_CarrotsTotal = 0;
+    float m_PickupRadius = 0.8f;
 
 private:
     Entity* GetEntity(int id);
@@ -46,4 +52,13 @@ private:
     BunnyType m_ActiveBunnyType = BunnyType::Tofu;
 
     float m_Speed = 5.0f;
+
+    // tile map
+    TilemapRenderer m_Tilemap;
+    float           m_TileScale = 1.0f;
+
+    // guard ai 
+    std::vector<int> m_BunnyIDs;
+    bool             m_GameOver = false;
+    bool             m_GameWon = false;
 };

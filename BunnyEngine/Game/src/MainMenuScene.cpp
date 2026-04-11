@@ -6,8 +6,8 @@
 #include <iostream>
 #include "Core/AudioManager.h"
 
-MainMenuScene::MainMenuScene(Renderer2D* renderer)
-    : m_Renderer(renderer) {
+MainMenuScene::MainMenuScene(Renderer2D* renderer, Framebuffer* framebuffer)
+    : m_Renderer(renderer), m_Framebuffer(framebuffer) {
 }
 
 MainMenuScene::~MainMenuScene()
@@ -41,11 +41,13 @@ void MainMenuScene::OnUpdate(float deltaTime)
 
 void MainMenuScene::OnRenderGL()
 {
-    // Get actual framebuffer size
+    // Update screen size from ImGui
     ImGuiIO& io = ImGui::GetIO();
     m_ScreenW = io.DisplaySize.x;
     m_ScreenH = io.DisplaySize.y;
 
+    // Use framebuffer size instead for correct projection
+    // This matches what's actually being rendered into
     glm::mat4 proj = glm::ortho(
         0.0f, m_ScreenW,
         0.0f, m_ScreenH,

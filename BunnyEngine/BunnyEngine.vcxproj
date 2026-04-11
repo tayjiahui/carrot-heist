@@ -172,12 +172,14 @@
     <ClCompile Include="Engine\src\Framebuffer.cpp" />
     <ClCompile Include="Engine\src\main.cpp" />
     <ClCompile Include="Engine\src\Renderer2D.cpp" />
+    <ClCompile Include="Engine\src\Renderer\TilemapRenderer.cpp" />
     <ClCompile Include="Engine\src\Shader.cpp" />
     <ClCompile Include="Engine\src\SpriteSheet.cpp" />
     <ClCompile Include="Engine\src\Texture.cpp" />
     <ClCompile Include="Game\src\GameScene.cpp" />
     <ClCompile Include="Game\src\MainMenuScene.cpp" />
     <ClCompile Include="Game\src\Systems\AbilitySystem.cpp" />
+    <ClCompile Include="Game\src\Systems\GuardAI.cpp" />
     <ClCompile Include="ThirdParty\glad\src\glad.c" />
     <ClCompile Include="ThirdParty\imgui\imgui-master\backends\imgui_impl_glfw.cpp" />
     <ClCompile Include="ThirdParty\imgui\imgui-master\backends\imgui_impl_opengl3.cpp" />
@@ -187,7 +189,6 @@
     <ClCompile Include="ThirdParty\imgui\imgui-master\imgui_widgets.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Engine\include\Camera2D.h" />
     <ClInclude Include="Engine\include\Core\AudioManager.h" />
     <ClInclude Include="Engine\include\Core\EditorInteraction.h" />
     <ClInclude Include="Engine\include\Core\Input.h" />
@@ -197,13 +198,16 @@
     <ClInclude Include="Engine\include\Entity.h" />
     <ClInclude Include="Engine\include\Framebuffer.h" />
     <ClInclude Include="Engine\include\Renderer2D.h" />
+    <ClInclude Include="Engine\include\Renderer\TilemapRenderer.h" />
     <ClInclude Include="Engine\include\Scene.h" />
+    <ClInclude Include="Engine\include\Scene\Camera2D.h" />
     <ClInclude Include="Engine\include\Shader.h" />
     <ClInclude Include="Engine\include\SpriteSheet.h" />
     <ClInclude Include="Engine\include\Texture.h" />
     <ClInclude Include="Game\include\GameScene.h" />
     <ClInclude Include="Game\include\MainMenuScene.h" />
     <ClInclude Include="Game\include\Systems\AbilitySystem.h" />
+    <ClInclude Include="Game\include\Systems\GuardAI.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

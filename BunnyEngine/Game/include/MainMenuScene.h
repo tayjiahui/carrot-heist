@@ -2,6 +2,7 @@
 #include "Core/IScene.h"
 #include "Renderer/Renderer2D.h"
 #include "Renderer/Texture.h"
+#include "Renderer/Framebuffer.h"
 #include <glm/glm.hpp>
 
 class MainMenuScene : public IScene
@@ -15,6 +16,7 @@ public:
     void OnRenderGL()              override;
     void OnRenderImGui()           override;
     void OnExit()                  override;
+    MainMenuScene(Renderer2D* renderer, Framebuffer* framebuffer);
 
 
     // Screen dimensions updated each frame
@@ -29,6 +31,7 @@ public:
 
 private:
     Renderer2D* m_Renderer = nullptr;
+    Framebuffer* m_Framebuffer = nullptr;
 
     // Textures
     Texture* m_Background = nullptr;

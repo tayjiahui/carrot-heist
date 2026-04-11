@@ -371,7 +371,7 @@ int main()
     ImGui_ImplOpenGL3_Init("#version 460");
 
     // Register scenes
-    SceneManager::Get().RegisterScene("MainMenu", new MainMenuScene(g_Renderer));
+    SceneManager::Get().RegisterScene("MainMenu", new MainMenuScene(g_Renderer, g_Framebuffer));
     SceneManager::Get().RegisterScene("Game", new GameScene(g_Renderer, g_Framebuffer));
     SceneManager::Get().SwitchTo("MainMenu");
 

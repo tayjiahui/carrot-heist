@@ -23,6 +23,7 @@ public:
     // Reset
     void Reset() { m_Position = { 0,0 }; m_Zoom = 1.0f; }
 
+    void SetPosition(const glm::vec2& pos) { m_Position = pos; }
 private:
     void RecalculateMatrix(float viewportWidth, float viewportHeight);
 
