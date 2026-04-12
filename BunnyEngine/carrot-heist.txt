@@ -1,55 +1,180 @@
-Visual Style
-A cute, slightly dark pixel art top-down game. Think cozy but mischievous — like if Untitled Goose Game had bunnies and a heist movie aesthetic. Night-time garden levels, soft moonlight, long shadows, warm lantern glows.
+Carrot Heist
 
-The Vibe
-Three domestic bunnies living a secret double life as master thieves. During the day they're cute pets.
-At night they're coordinated criminals in tiny little heist outfits — little black masks, capes, maybe a beret
-for Toffee 🥐
+Carrot Heist is a 2D top-down stealth game built on a custom C++ game engine (BunnyEngine). 
+Players control two bunny recruits — Toast and Tofu — under the guidance of Master Whiskers, a legendary retired thief who runs an underground Bunny Heist Academy. 
+The tutorial level tasks players with stealing carrots from a grandma's garden as their first training mission.
 
-🐇 The Narrative !!!!!!!!!!!
-Master Whiskers — a legendary bunny thief, retired but now running an underground academy for aspiring bunny robbers. Toast and Tofu are his newest recruits.
-The training levels are designed to test their skills before moving to bigger heists.
+=====================================================================
 
+Narrative
 
-🐇 The Three Characters
-Toast 🍞 — warm golden-brown, the reliable leader
+Master Whiskers is a legendary retired bunny thief who now runs the Bunny Heist Academy — an underground school for aspiring bunny robbers.
+Toast and Tofu are his newest recruits. Their training begins with small targets before moving to bigger heists across future levels.
+Level 1 — Tutorial: Steal 8 carrots from grandma's backyard garden. The grandma herself patrols the garden. Use the bushes to hide, coordinate both bunnies, and escape through the burrow.
 
-Sturdy, methodical, slightly serious
-Thump ability — stomps to stun guards or trigger pressure plates
-
-Tofu 🤍 — soft white, the clumsy wildcard
-
-Chaotic energy, knocks things over constantly
-Binky Dash — unpredictable zigzag sprint, hard to control but unstoppable
-
-Toffee 🟫 — rich brown, the sneaky specialist
-
-Quiet, clever, always plotting
-Dig — tunnels under walls and patrol paths
+=====================================================================
 
 
-🎮 Game Feel
+Engine Systems
 
-Stealth tension — guards have vision cones, alert states (😴 → 👀 → 🚨)
-Puzzle satisfaction — each level has one elegant solution using all three bunnies
-Chaotic moments — Tofu's dash going wrong and accidentally knocking over a flowerpot, waking a guard
-Reward — post-heist screen showing loot collected, time taken, alarm triggers (star rating)
+Window + OpenGL 4.6 context (GLFW + glad)
+ImGui editor with dockspace layout
+Framebuffer — game renders inside viewport panel
+Renderer2D — colored quads + sprite rendering
+Shader system — vertex + fragment shaders
+Texture loader — PNG via stb_image
+SpriteSheet + UV frame system
+Camera2D — pan, zoom, reset (MMB drag, scroll, R)
+Entity + Scene system
+IScene interface — GL/ImGui render split
+SceneManager — register, switch, update, render
+Input system — keyboard + mouse polling
+AudioManager — FMOD BGM + SFX, volume sliders
+EditorInteraction — click to select, Alt+drag to move
+SceneSerializer — save/load entities to JSON
+TilemapRenderer — loads .tmj, renders tile layers
 
-🗺️ Level Progression
-Level	Location 	Difficulty 
-1	backyard		Tutorial
-2	Kitchen Counter	Easy
-3	Farmers Market	Medium
-4	Pet Shop		Medium
-5	Fancy Restaurant	Hard
-6	Carrot Vault	😈
 
+=====================================================================
 
+Game Systems
 
+MainMenuScene — background + buttons (Play, Guide, Options, Quit)
+GameScene — full gameplay scene
+WASD movement
+Bunny switching — 1 (Tofu) / 2 (Toast)
+Camera follow — smooth lerp to active bunny
+Collision system — tilemap collision layers
+Carrot pickup + counter (8 carrots)
+AbilitySystem — J/K/L with cooldowns per bunny
+Guard AI — patrol waypoints (ping-pong), vision cone
+Alert states — Patrol → Suspicious → Alerted → Searching
+Hide system — per bunny, H to hide, guard loses target
+Dialogue system — typewriter effect, multi-line, speaker name
+NPC interaction — Master Whiskers quest dialogue
+PauseMenu — ESC to pause, Resume/Guide/MainMenu (reusable prefab)
+GuideBook — multi-page book, Carrot_Next/Prev navigation
+Win condition — collect all carrots + talk to NPC + both bunnies escape
+Lose condition — grandma catches a bunny
+Audio — BGM per scene, SFX on collect
 
+=====================================================================
 
-// CODE NOTES
+Deferred bugs
 
+⚠️  Main menu background zooms in when returning from game scene
+    → Framebuffer size mismatch between editor viewport and fullscreen
+    → Attempted fix: resize framebuffer to window size in MainMenu
+    → Still not working, deferred
+
+⚠️  GuideBook prev button hover misalignment in MainMenu
+    → Works correctly in GameScene/PauseMenu
+    → Something about MainMenu's ImGui window context causes offset
+    → Deferred
+
+⚠️  Options button in MainMenu has no functionality yet
+    → Placeholder only
+
+⚠️  LNK4098 warning — MSVCRT lib conflict
+    → Harmless warning, doesn't affect runtime
+    → Fix: Project Properties → Linker → /NODEFAULTLIB:MSVCRT
+
+=====================================================================
+
+Known issues 
+
+⚠️  External tileset (.tsx) not supported
+    → Must embed tilesets in Tiled before exporting
+    → One exterior.tsx still showing as external warning
+
+⚠️  Guard vision cone is a simple quad visual
+    → Not a true cone shape yet
+    → Functional but visually imprecise
+
+⚠️  Collision uses tilemap layer named "Collision"
+    → Layer naming must be exact
+    → "Collision overlap" layer also checked
+
+⚠️  Bunny sprites still placeholder colored quads
+    → No actual sprite art yet
+    → Animation system not built yet
+
+=====================================================================
+
+Next to build
+
+⬜ Sound effects — footstep sounds, alert sound (guard spots bunny)
+⬜ Win/lose screen — proper star rating UI
+⬜ Options menu — volume sliders, maybe keybind display
+
+Art & Animation
+
+⬜ Draw bunny sprites — Toast (walk, idle, ability)
+⬜ Draw bunny sprites — Tofu (walk, idle, ability)
+⬜ Draw grandma guard sprite
+⬜ Draw carrot sprite
+⬜ Draw Master Whiskers NPC sprite
+⬜ Animation system — walk/idle state machine
+⬜ Sprite direction — bunny faces movement direction
+
+Game Polish
+
+⬜ Footstep sounds — play while moving
+⬜ Alert sound — plays when guard enters Alerted state
+⬜ Particle effects — sparkle when carrot collected
+⬜ HUD improvements — bunny portraits, ability icons
+⬜ Guard vision cone — proper triangle/cone shape render
+
+Engine Tools (Later)
+
+⬜ Built-in Tilemap Editor (maybe not)
+⬜ Proper Hierarchy with real entity editing
+⬜ Play/Stop mode button in editor
+⬜ Undo/Redo system
+⬜ Asset browser with drag and drop
+
+Future Levels
+
+⬜ Level 2 — Kitchen Counter
+⬜ Level 3 — Farmers Market
+⬜ Level 4 — Pet Shop
+⬜ Level 5 — Fancy Restaurant
+⬜ Level 6 — The Carrot Vault
+⬜ Level Select Screen
+
+=====================================================================
+
+Levels
+
+Tutorial
+Tiled map designed (40x30 tiles, 16x16px)
+4 layers — Ground, Decoration, Collision, Objects
+8 carrots placed
+5 hide spots
+Grandma guard with 8-waypoint patrol route
+Master Whiskers NPC with quest dialogue
+Exit zone (burrow) — both bunnies must escape
+
+=====================================================================
+
+Controls 
+
+W A S D  |  Move active bunny
+	 |
+1	 |  Switch to Tofu
+2	 |  Switch to Toast
+H	 |  Hide / Unhide
+E	 |  Talk to NPC
+J	 |  Ability 1
+K	 |  Ability 2
+L	 |  Ability 3
+ESC	 |  Pause Menu
+MMB	 |  Pan Camera (editor)
+Scroll	 |  Zoom Camera
+R	 |  Rest camera
+ALT	 |  Toggle drag mode (editor)
+
+=====================================================================
 
 ===== PAUSE MENU ======
 For every new level scene, just add these 3 lines to OnEnter(): 
