@@ -172,6 +172,8 @@
     <ClCompile Include="Engine\src\Framebuffer.cpp" />
     <ClCompile Include="Engine\src\main.cpp" />
     <ClCompile Include="Engine\src\Renderer2D.cpp" />
+    <ClCompile Include="Engine\src\Renderer\Animator.cpp" />
+    <ClCompile Include="Engine\src\Renderer\CharacterAnimator.cpp" />
     <ClCompile Include="Engine\src\Renderer\TilemapRenderer.cpp" />
     <ClCompile Include="Engine\src\Shader.cpp" />
     <ClCompile Include="Engine\src\SpriteSheet.cpp" />
@@ -201,6 +203,8 @@
     <ClInclude Include="Engine\include\Entity.h" />
     <ClInclude Include="Engine\include\Framebuffer.h" />
     <ClInclude Include="Engine\include\Renderer2D.h" />
+    <ClInclude Include="Engine\include\Renderer\Animator.h" />
+    <ClInclude Include="Engine\include\Renderer\CharacterAnimator.h" />
     <ClInclude Include="Engine\include\Renderer\TilemapRenderer.h" />
     <ClInclude Include="Engine\include\Scene.h" />
     <ClInclude Include="Engine\include\Scene\Camera2D.h" />

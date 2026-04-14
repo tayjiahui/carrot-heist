@@ -174,6 +174,67 @@ void GameScene::OnEnter()
     m_GameOver = false;
     m_GameWon = false;
 
+    // animation set up
+    // Init Tofu animator
+    m_TofuAnimator.Init("Assets/Textures/tofu_sprite.png", 50, 50);
+    m_TofuAnimator.SetWorldSize({ 3.0f, 3.0f });
+
+    // Idle
+    m_TofuAnimator.AddClip({ "idle_right", { 0 },        0.5f,  true });
+    m_TofuAnimator.AddClip({ "idle_left",  { 1 },        0.5f,  true });
+    m_TofuAnimator.AddClip({ "idle_up",    { 2 },        0.5f,  true });
+    m_TofuAnimator.AddClip({ "idle_down",  { 3 },        0.5f,  true });
+
+    // Walk
+    m_TofuAnimator.AddClip({ "walk_right", { 4,  5,  6  }, 0.12f, true });
+    m_TofuAnimator.AddClip({ "walk_left",  { 7,  8,  9  }, 0.12f, true });
+    m_TofuAnimator.AddClip({ "walk_up",    { 20, 21     }, 0.12f, true });
+    m_TofuAnimator.AddClip({ "walk_down",  { 22, 23     }, 0.12f, true });
+
+    // Ability J — Binky Dash
+    m_TofuAnimator.AddClip({ "dash_right", { 10, 11, 12 }, 0.5f, false });
+    m_TofuAnimator.AddClip({ "dash_left",  { 13, 14, 15 }, 0.5f, false });
+
+    // Ability K — Knock
+    m_TofuAnimator.AddClip({ "knock_right", { 16 }, 0.5f, false });
+    m_TofuAnimator.AddClip({ "knock_left",  { 17 }, 0.5f, false });
+
+    // Ability L — Squeeze
+    m_TofuAnimator.AddClip({ "squeeze_up",   { 18 }, 0.5f, false });
+    m_TofuAnimator.AddClip({ "squeeze_down", { 19 }, 0.5f, false });
+
+    m_TofuAnimator.Play("idle_down");
+
+    // Init Toast animator
+    m_ToastAnimator.Init("Assets/Textures/toast_sprite.png", 50, 50);
+    m_ToastAnimator.SetWorldSize({ 3.0f, 3.0f });
+
+    // Idle
+    m_ToastAnimator.AddClip({ "idle_right", { 0 },           0.5f,  true });
+    m_ToastAnimator.AddClip({ "idle_left",  { 1 },           0.5f,  true });
+    m_ToastAnimator.AddClip({ "idle_up",    { 2 },           0.5f,  true });
+    m_ToastAnimator.AddClip({ "idle_down",  { 3 },           0.5f,  true });
+
+    // Walk
+    m_ToastAnimator.AddClip({ "walk_right", { 4,  5,  6  },  0.12f, true });
+    m_ToastAnimator.AddClip({ "walk_left",  { 7,  8,  9  },  0.12f, true });
+    m_ToastAnimator.AddClip({ "walk_up",    { 26, 27     },  0.12f, true });
+    m_ToastAnimator.AddClip({ "walk_down",  { 28, 29     },  0.12f, true });
+
+    // Ability J — Thump
+    m_ToastAnimator.AddClip({ "thump_right", { 10, 11 },     0.15f, false });
+    m_ToastAnimator.AddClip({ "thump_left",  { 12, 13 },     0.15f, false });
+
+    // Ability K — Sniff
+    m_ToastAnimator.AddClip({ "sniff_right", { 14, 15, 16, 17 }, 0.15f, false });
+    m_ToastAnimator.AddClip({ "sniff_left",  { 18, 19, 20, 21 }, 0.15f, false });
+
+    // Ability L — Dig
+    m_ToastAnimator.AddClip({ "dig_right", { 22, 23 }, 0.15f, false });
+    m_ToastAnimator.AddClip({ "dig_left",  { 24, 25 }, 0.15f, false });
+
+    m_ToastAnimator.Play("idle_down");
+
 }
 
 void GameScene::OnUpdate(float deltaTime)
@@ -496,6 +557,114 @@ void GameScene::OnUpdate(float deltaTime)
     if (DialogueSystem::Get().IsActive() &&
         Input::IsKeyPressed(GLFW_KEY_E))
         DialogueSystem::Get().Advance();
+
+
+    // Track and update Tofu animation
+    if (m_ActiveBunnyID == m_TofuID)
+    {
+        m_TofuMoveDir = dir;
+        m_TofuAbilityJ = Input::IsKeyPressed(GLFW_KEY_J);
+        m_TofuAbilityK = Input::IsKeyPressed(GLFW_KEY_K);
+        m_TofuAbilityL = Input::IsKeyPressed(GLFW_KEY_L);
+    }
+    else
+    {
+        m_TofuMoveDir = { 0.0f, 0.0f };
+        m_TofuAbilityJ = false;
+        m_TofuAbilityK = false;
+        m_TofuAbilityL = false;
+    }
+
+    // Update facing
+    m_TofuAnimator.UpdateFacing(m_TofuMoveDir);
+
+    // Determine clip
+    bool isMoving = glm::length(m_TofuMoveDir) > 0.01f;
+    FacingDir facing = m_TofuAnimator.GetFacing();
+
+    if (m_TofuAbilityJ) {
+        m_TofuAnimator.Play(
+            facing == FacingDir::Left ? "dash_left" : "dash_right", true);
+    }
+    else if (m_TofuAbilityK) {
+        m_TofuAnimator.Play(
+            facing == FacingDir::Left ? "knock_left" : "knock_right", true);
+    }
+    else if (m_TofuAbilityL) {
+        m_TofuAnimator.Play(
+            facing == FacingDir::Up ? "squeeze_up" : "squeeze_down", true);
+    }
+    else if (isMoving) {
+        switch (facing) {
+        case FacingDir::Right: m_TofuAnimator.Play("walk_right"); break;
+        case FacingDir::Left:  m_TofuAnimator.Play("walk_left");  break;
+        case FacingDir::Up:    m_TofuAnimator.Play("walk_up");    break;
+        case FacingDir::Down:  m_TofuAnimator.Play("walk_down");  break;
+        }
+    }
+    else {
+        switch (facing) {
+        case FacingDir::Right: m_TofuAnimator.Play("idle_right"); break;
+        case FacingDir::Left:  m_TofuAnimator.Play("idle_left");  break;
+        case FacingDir::Up:    m_TofuAnimator.Play("idle_up");    break;
+        case FacingDir::Down:  m_TofuAnimator.Play("idle_down");  break;
+        }
+    }
+
+    m_TofuAnimator.Update(deltaTime);
+
+    // Track Toast movement
+    if (m_ActiveBunnyID == m_ToastID)
+    {
+        m_ToastMoveDir = dir;
+        m_ToastAbilityJ = Input::IsKeyPressed(GLFW_KEY_J);
+        m_ToastAbilityK = Input::IsKeyPressed(GLFW_KEY_K);
+        m_ToastAbilityL = Input::IsKeyPressed(GLFW_KEY_L);
+    }
+    else
+    {
+        m_ToastMoveDir = { 0.0f, 0.0f };
+        m_ToastAbilityJ = false;
+        m_ToastAbilityK = false;
+        m_ToastAbilityL = false;
+    }
+
+    // Update Toast facing
+    m_ToastAnimator.UpdateFacing(m_ToastMoveDir);
+
+    bool toastMoving = glm::length(m_ToastMoveDir) > 0.01f;
+    FacingDir toastFacing = m_ToastAnimator.GetFacing();
+
+    if (m_ToastAbilityJ) {
+        m_ToastAnimator.Play(
+            toastFacing == FacingDir::Left ? "thump_left" : "thump_right", true);
+    }
+    else if (m_ToastAbilityK) {
+        m_ToastAnimator.Play(
+            toastFacing == FacingDir::Left ? "sniff_left" : "sniff_right", true);
+    }
+    else if (m_ToastAbilityL) {
+        m_ToastAnimator.Play(
+            toastFacing == FacingDir::Left ? "dig_left" : "dig_right", true);
+    }
+    else if (toastMoving) {
+        switch (toastFacing) {
+        case FacingDir::Right: m_ToastAnimator.Play("walk_right"); break;
+        case FacingDir::Left:  m_ToastAnimator.Play("walk_left");  break;
+        case FacingDir::Up:    m_ToastAnimator.Play("walk_up");    break;
+        case FacingDir::Down:  m_ToastAnimator.Play("walk_down");  break;
+        }
+    }
+    else {
+        switch (toastFacing) {
+        case FacingDir::Right: m_ToastAnimator.Play("idle_right"); break;
+        case FacingDir::Left:  m_ToastAnimator.Play("idle_left");  break;
+        case FacingDir::Up:    m_ToastAnimator.Play("idle_up");    break;
+        case FacingDir::Down:  m_ToastAnimator.Play("idle_down");  break;
+        }
+    }
+
+    m_ToastAnimator.Update(deltaTime);
 }
 
 void GameScene::OnRenderGL()
@@ -511,8 +680,59 @@ void GameScene::OnRenderGL()
     {
         if (!entity.active) continue;
 
+        // Tofu — use animated sprite
+        if (entity.id == m_TofuID)
+        {
+            AnimationFrame frame = m_TofuAnimator.GetCurrentFrame();
+
+            // Highlight if selected or active
+            glm::vec4 tint = glm::vec4(1.0f);
+            if (entity.id == m_ActiveBunnyID)
+                tint = glm::vec4(1.2f, 1.2f, 1.2f, 1.0f);
+            if (m_BunnyHiding.count(entity.id) && m_BunnyHiding[entity.id])
+                tint = glm::vec4(0.3f, 0.5f, 1.0f, 0.6f);
+
+            // Draw sprite — scale up from 50px to world units
+            // 50px / 16px per unit = ~3 units wide
+            glm::vec2 spriteSize = { 3.0f, 3.0f };
+
+            m_Renderer->DrawFrame(
+                entity.transform.position,
+                spriteSize,
+                0.0f,
+                m_TofuAnimator.GetTextureID(),
+                frame.uvMin,
+                frame.uvMax,
+                tint
+            );
+            continue;
+        }
+
+        // Toast — animated sprite
+        if (entity.id == m_ToastID)
+        {
+            AnimationFrame frame = m_ToastAnimator.GetCurrentFrame();
+
+            glm::vec4 tint = glm::vec4(1.0f);
+            if (entity.id == m_ActiveBunnyID)
+                tint = glm::vec4(1.2f, 1.2f, 1.2f, 1.0f);
+            if (m_BunnyHiding.count(entity.id) && m_BunnyHiding[entity.id])
+                tint = glm::vec4(0.3f, 0.5f, 1.0f, 0.6f);
+
+            m_Renderer->DrawFrame(
+                entity.transform.position,
+                m_ToastAnimator.GetWorldSize(),
+                0.0f,
+                m_ToastAnimator.GetTextureID(),
+                frame.uvMin,
+                frame.uvMax,
+                tint
+            );
+            continue;
+        }
+
+        // All other entities — colored quads as before
         glm::vec4 color = { 0.8f, 0.8f, 0.8f, 1.0f };
-        if (entity.name.find("Tofu") != std::string::npos) color = { 0.95f, 0.95f, 0.90f, 1.0f };
         if (entity.name.find("Toast") != std::string::npos) color = { 0.95f, 0.85f, 0.60f, 1.0f };
         if (entity.name.find("Guard") != std::string::npos) color = { 0.80f, 0.20f, 0.20f, 1.0f };
         if (entity.name.find("Grandma") != std::string::npos) color = { 0.80f, 0.20f, 0.20f, 1.0f };
@@ -520,7 +740,6 @@ void GameScene::OnRenderGL()
 
         if (entity.id == m_ActiveBunnyID)
             color = glm::vec4(glm::vec3(color) * 1.5f, 1.0f);
-
         if (m_BunnyHiding.count(entity.id) && m_BunnyHiding[entity.id])
             color = glm::vec4(0.3f, 0.5f, 1.0f, 0.6f);
 
@@ -711,8 +930,11 @@ void GameScene::OnExit()
 
     AudioManager::Get().StopBGM();
     m_Tilemap.Unload();
+    m_TofuAnimator.Shutdown();
+    m_ToastAnimator.Shutdown();
     delete m_Scene;
     m_Scene = nullptr;
+
 }
 
 std::vector<Entity>* GameScene::GetEntities()

@@ -13,6 +13,7 @@
 #include "Systems/GuardAI.h"
 #include "DialogueSystem.h"
 #include <unordered_map>
+#include "Renderer/CharacterAnimator.h"
 
 class GameScene : public IScene
 {
@@ -87,4 +88,18 @@ private:
     std::vector<NPCData> m_NPCs;
     bool                 m_NearNPC = false;
     int                  m_NearNPCIdx = -1;
+
+    // animation spritesheet
+    CharacterAnimator m_TofuAnimator;
+    CharacterAnimator m_ToastAnimator;
+
+    glm::vec2 m_TofuMoveDir = { 0.0f, 0.0f };
+    bool      m_TofuAbilityJ = false;
+    bool      m_TofuAbilityK = false;
+    bool      m_TofuAbilityL = false;
+
+    glm::vec2         m_ToastMoveDir = { 0.0f, 0.0f };
+    bool              m_ToastAbilityJ = false;
+    bool              m_ToastAbilityK = false;
+    bool              m_ToastAbilityL = false;
 };
