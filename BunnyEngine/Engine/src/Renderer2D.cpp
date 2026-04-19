@@ -137,17 +137,27 @@ void Renderer2D::DrawFrame(const glm::vec2& position,
     unsigned int     textureID,
     const glm::vec2& uvMin,
     const glm::vec2& uvMax,
-    const glm::vec4& tint)
+    const glm::vec4& tint,
+    bool flipX)
 {
+    // Flip UVs horizontally if needed
+    glm::vec2 finalUVMin = uvMin;
+    glm::vec2 finalUVMax = uvMax;
+
+    if (flipX)
+    {
+        finalUVMin.x = uvMax.x;
+        finalUVMax.x = uvMin.x;
+    }
+
     // Build vertices with custom UVs
     float vertices[] = {
-        -0.5f, -0.5f,  uvMin.x, uvMin.y,
-         0.5f, -0.5f,  uvMax.x, uvMin.y,
-         0.5f,  0.5f,  uvMax.x, uvMax.y,
-
-        -0.5f, -0.5f,  uvMin.x, uvMin.y,
-         0.5f,  0.5f,  uvMax.x, uvMax.y,
-        -0.5f,  0.5f,  uvMin.x, uvMax.y,
+    -0.5f, -0.5f,  finalUVMin.x, finalUVMin.y,
+     0.5f, -0.5f,  finalUVMax.x, finalUVMin.y,
+     0.5f,  0.5f,  finalUVMax.x, finalUVMax.y,
+    -0.5f, -0.5f,  finalUVMin.x, finalUVMin.y,
+     0.5f,  0.5f,  finalUVMax.x, finalUVMax.y,
+    -0.5f,  0.5f,  finalUVMin.x, finalUVMax.y,
     };
 
     glm::mat4 transform = glm::mat4(1.0f);

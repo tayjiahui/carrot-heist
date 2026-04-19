@@ -172,15 +172,14 @@ void TilemapRenderer::RenderLayer(Renderer2D* renderer,
 
     if (!layer || !layer->visible) return;
 
-    float tw = m_Data.tileWidth * tileScale;
-    float th = m_Data.tileHeight * tileScale;
-
     for (int row = 0; row < layer->height; row++)
     {
         for (int col = 0; col < layer->width; col++)
         {
             int gid = layer->tiles[row * layer->width + col];
-            if (gid == 0) continue; // empty tile
+            if (gid == 0) continue;
+
+            if (col >= m_Data.mapWidth || row >= m_Data.mapHeight) continue;
 
             const TilesetData* tileset = FindTileset(gid);
             if (!tileset || !tileset->texture) continue;
@@ -188,18 +187,32 @@ void TilemapRenderer::RenderLayer(Renderer2D* renderer,
             glm::vec2 uvMin, uvMax;
             GetTileUV(gid, *tileset, uvMin, uvMax);
 
-            // World position — centered on tile
-            // Tiled Y is top-down, OpenGL Y is bottom-up so flip Y
-            float worldX = col * tw + tw * 0.5f;
-            float worldY = (m_Data.mapHeight - row - 1) * th + th * 0.5f;
+            // Use THIS tileset's tile size, not the map's global size
+            float tw = tileset->tileWidth * tileScale;
+            float th = tileset->tileHeight * tileScale;
+
+            // Anchor position still based on map grid (16px tiles)
+            float baseTw = m_Data.tileWidth * tileScale;
+            float baseTh = m_Data.tileHeight * tileScale;
+
+            float worldX = col * baseTw + tw * 0.5f;
+            float worldY = (m_Data.mapHeight - row - 1) * baseTh + th * 0.5f;
+
+            float pixelsPerUnit = 1.0f / tileScale; // or whatever your pixel density is
+            worldX = std::round(worldX * pixelsPerUnit) / pixelsPerUnit;
+            worldY = std::round(worldY * pixelsPerUnit) / pixelsPerUnit;
+
+            float overlap = 0.005f; // tiny overdraw to close gaps
 
             renderer->DrawFrame(
                 { worldX, worldY },
-                { tw, th },
+                { tw + overlap, th + overlap },
                 0.0f,
                 tileset->texture->GetID(),
                 uvMin,
-                uvMax
+                uvMax,
+                glm::vec4(1.0f),
+                false
             );
         }
     }
@@ -229,7 +242,7 @@ bool TilemapRenderer::IsCollision(float worldX, float worldY, float tileScale) c
     {
         // Check any layer with "Collision" in the name
         if (layer.name.find("Collision") == std::string::npos &&
-            layer.name.find("ollision") == std::string::npos) continue;
+            layer.name.find("collide") == std::string::npos) continue;
 
         if (col < 0 || col >= layer.width ||
             row < 0 || row >= layer.height)
@@ -252,10 +265,14 @@ void TilemapRenderer::GetTileUV(int gid, const TilesetData& tileset,
     float texW = (float)(tileset.columns * tileset.tileWidth);
     float texH = (float)((tileset.tileCount / tileset.columns) * tileset.tileHeight);
 
-    float uMin = (col * tileset.tileWidth) / texW;
-    float vMin = (row * tileset.tileHeight) / texH;
-    float uMax = uMin + tileset.tileWidth / texW;
-    float vMax = vMin + tileset.tileHeight / texH;
+    // Half-pixel inset based on actual texture dimensions
+    float halfPixelU = 0.5f / texW;
+    float halfPixelV = 0.5f / texH;
+
+    float uMin = (col * tileset.tileWidth) / texW + halfPixelU;
+    float vMin = (row * tileset.tileHeight) / texH + halfPixelV;
+    float uMax = uMin + (tileset.tileWidth / texW) - halfPixelU * 2.0f;
+    float vMax = vMin + (tileset.tileHeight / texH) - halfPixelV * 2.0f;
 
     // Flip V for OpenGL
     uvMin = { uMin, 1.0f - vMax };

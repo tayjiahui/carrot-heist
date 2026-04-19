@@ -83,12 +83,12 @@ void RenderMenuBar()
             if (ImGui::MenuItem("Open Scene", "Ctrl+O")) {
                 IScene* s = SceneManager::Get().GetCurrentScene();
                 if (s && s->GetScene())
-                    SceneSerializer::Load(*s->GetScene(), "Assets/Scenes/level01.json");
+                    SceneSerializer::Load(*s->GetScene(), "Assets/Scenes/tutorial.json");
             }
             if (ImGui::MenuItem("Save Scene", "Ctrl+S")) {
                 IScene* s = SceneManager::Get().GetCurrentScene();
                 if (s && s->GetScene())
-                    SceneSerializer::Save(*s->GetScene(), "Assets/Scenes/level01.json");
+                    SceneSerializer::Save(*s->GetScene(), "Assets/Scenes/tutorial.json");
             }
             ImGui::Separator();
             if (ImGui::MenuItem("Exit", "Alt+F4")) { exit(0); }

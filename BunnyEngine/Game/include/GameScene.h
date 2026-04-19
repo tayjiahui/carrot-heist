@@ -38,6 +38,17 @@ public:
 
     std::vector<int> m_BunniesEscaped;
 
+    // tofu's binky dash
+    // Binky dash state
+    bool      m_TofuDashing = false;
+    float     m_TofuDashTimer = 0.0f;
+    float     m_TofuDashDuration = 0.5f;
+    float     m_TofuDashSpeed = 12.0f;
+    glm::vec2 m_TofuDashDir = { 0.0f, 0.0f };
+
+    CharacterAnimator m_GrandmaAnimator;
+    glm::vec2         m_GrandmaMoveDir = { 0.0f, 0.0f };
+
 private:
     Entity* GetEntity(int id);
     void    CycleBunny(int dir);

@@ -38,9 +38,11 @@ public:
     glm::vec2 GetWorldSize() const { return m_WorldSize; }
     void      SetWorldSize(glm::vec2 size) { m_WorldSize = size; }
 
+    bool GetFlipX() const { return m_FlipX; }
 private:
     Animator     m_Animator;
     SpriteSheet* m_Sheet = nullptr;
     FacingDir    m_Facing = FacingDir::Down;
     glm::vec2    m_WorldSize = { 2.0f, 2.0f };
+    bool m_FlipX = false;
 };

@@ -48,7 +48,7 @@ void GameScene::OnEnter()
     });
 
     // Load tilemap
-    if (m_Tilemap.Load("Assets/Tilemaps/level01.tmj"))
+    if (m_Tilemap.Load("Assets/Tilemaps/Level01.tmj"))
     {
         const TilemapData& data = m_Tilemap.GetData();
 
@@ -192,8 +192,8 @@ void GameScene::OnEnter()
     m_TofuAnimator.AddClip({ "walk_down",  { 22, 23     }, 0.12f, true });
 
     // Ability J — Binky Dash
-    m_TofuAnimator.AddClip({ "dash_right", { 10, 11, 12 }, 0.5f, false });
-    m_TofuAnimator.AddClip({ "dash_left",  { 13, 14, 15 }, 0.5f, false });
+    m_TofuAnimator.AddClip({ "dash_right", { 10, 11, 12 }, 0.16f, false });
+    m_TofuAnimator.AddClip({ "dash_left",  { 13, 14, 15 }, 0.16f, false });
 
     // Ability K — Knock
     m_TofuAnimator.AddClip({ "knock_right", { 16 }, 0.5f, false });
@@ -234,6 +234,25 @@ void GameScene::OnEnter()
     m_ToastAnimator.AddClip({ "dig_left",  { 24, 25 }, 0.15f, false });
 
     m_ToastAnimator.Play("idle_down");
+
+    // Init Grandma animator
+    m_GrandmaAnimator.Init("Assets/Textures/grandma_sprite.png", 59, 49);
+    m_GrandmaAnimator.SetWorldSize({ 3.0f, 2.5f });
+
+    // Idle
+    m_GrandmaAnimator.AddClip({ "idle_down",  { 4,  5,  6,  7  }, 0.2f, true });
+    m_GrandmaAnimator.AddClip({ "idle_up",    { 12, 13, 14, 15 }, 0.2f, true });
+    m_GrandmaAnimator.AddClip({ "idle_left",  { 20, 21, 22, 23 }, 0.2f, true });
+    m_GrandmaAnimator.AddClip({ "idle_right", { 20, 21, 22, 23 }, 0.2f, true }); // flip
+
+    // Walk
+    m_GrandmaAnimator.AddClip({ "walk_down",  { 8,  9,  10, 11 }, 0.15f, true });
+    m_GrandmaAnimator.AddClip({ "walk_up",    { 16, 17, 18, 19 }, 0.15f, true });
+    m_GrandmaAnimator.AddClip({ "walk_left",  { 24, 25, 26, 27 }, 0.15f, true });
+    m_GrandmaAnimator.AddClip({ "walk_right", { 24, 25, 26, 27 }, 0.15f, true }); // flip
+
+    m_GrandmaAnimator.Play("idle_down");
+
 
 }
 
@@ -282,12 +301,15 @@ void GameScene::OnUpdate(float deltaTime)
     Entity* bunny = GetEntity(m_ActiveBunnyID);
     if (!bunny) return;
 
-    // 5. WASD movement
+	// 5. WASD movement - with restrictions based on what skill is being cast (eg. no movement during dash)
     glm::vec2 dir = { 0.0f, 0.0f };
-    if (Input::IsKeyDown(GLFW_KEY_W)) dir.y += 1.0f;
-    if (Input::IsKeyDown(GLFW_KEY_S)) dir.y -= 1.0f;
-    if (Input::IsKeyDown(GLFW_KEY_A)) dir.x -= 1.0f;
-    if (Input::IsKeyDown(GLFW_KEY_D)) dir.x += 1.0f;
+
+    if (!m_TofuDashing || m_ActiveBunnyID != m_TofuID) {
+        if (Input::IsKeyDown(GLFW_KEY_W)) dir.y += 1.0f;
+        if (Input::IsKeyDown(GLFW_KEY_S)) dir.y -= 1.0f;
+        if (Input::IsKeyDown(GLFW_KEY_A)) dir.x -= 1.0f;
+        if (Input::IsKeyDown(GLFW_KEY_D)) dir.x += 1.0f;
+    }
 
     if (glm::length(dir) > 0.0f)
         dir = glm::normalize(dir);
@@ -339,8 +361,71 @@ void GameScene::OnUpdate(float deltaTime)
     }
 
     // 8. Abilities
-    if (Input::IsKeyPressed(GLFW_KEY_J))
-        AbilitySystem::TriggerAbility(m_ActiveBunnyType, AbilitySlot::J, bunny);
+    // Ability J — Binky Dash
+    if (Input::IsKeyPressed(GLFW_KEY_J) &&
+        m_ActiveBunnyID == m_TofuID &&
+        !m_TofuDashing &&
+        AbilitySystem::GetCooldown(BunnyType::Tofu, AbilitySlot::J).IsReady())
+    {
+        // Start dash in current facing direction
+        m_TofuDashing = true;
+        m_TofuDashTimer = m_TofuDashDuration;
+
+        // Get dash direction from facing
+        FacingDir facing = m_TofuAnimator.GetFacing();
+        switch (facing) {
+        case FacingDir::Right: m_TofuDashDir = { 1.0f,  0.0f }; break;
+        case FacingDir::Left:  m_TofuDashDir = { -1.0f,  0.0f }; break;
+        case FacingDir::Up:    m_TofuDashDir = { 0.0f,  1.0f }; break;
+        case FacingDir::Down:  m_TofuDashDir = { 0.0f, -1.0f }; break;
+        }
+
+        m_TofuAnimator.Play(
+            facing == FacingDir::Left ? "dash_left" : "dash_right", true);
+
+        AbilitySystem::TriggerAbility(BunnyType::Tofu, AbilitySlot::J,
+            GetEntity(m_TofuID));
+        AudioManager::Get().PlaySFX("dash");
+        std::cout << "[Tofu] Binky Dash!\n";
+    }
+
+    // Apply dash movement
+    if (m_TofuDashing)
+    {
+        m_TofuDashTimer -= deltaTime;
+
+        Entity* tofu = GetEntity(m_TofuID);
+        if (tofu)
+        {
+            glm::vec2 dashMove = m_TofuDashDir * m_TofuDashSpeed * deltaTime;
+            glm::vec2 newPos = tofu->transform.position + dashMove;
+
+            // Still check collision during dash
+            float halfSize = 0.4f;
+            bool collX = false;
+            bool collY = false;
+
+            glm::vec2 testX = { newPos.x, tofu->transform.position.y };
+            if (m_Tilemap.IsCollision(testX.x + halfSize, testX.y, m_TileScale) ||
+                m_Tilemap.IsCollision(testX.x - halfSize, testX.y, m_TileScale))
+                collX = true;
+
+            glm::vec2 testY = { tofu->transform.position.x, newPos.y };
+            if (m_Tilemap.IsCollision(testY.x, testY.y + halfSize, m_TileScale) ||
+                m_Tilemap.IsCollision(testY.x, testY.y - halfSize, m_TileScale))
+                collY = true;
+
+            if (!collX) tofu->transform.position.x = newPos.x;
+            if (!collY) tofu->transform.position.y = newPos.y;
+
+            // Stop dash if hit wall or timer ran out
+            if ((collX || collY) || m_TofuDashTimer <= 0.0f)
+            {
+                m_TofuDashing = false;
+                std::cout << "[Tofu] Dash ended\n";
+            }
+        }
+    }
     if (Input::IsKeyPressed(GLFW_KEY_K))
         AbilitySystem::TriggerAbility(m_ActiveBunnyType, AbilitySlot::K, bunny);
     if (Input::IsKeyPressed(GLFW_KEY_L))
@@ -582,35 +667,32 @@ void GameScene::OnUpdate(float deltaTime)
     bool isMoving = glm::length(m_TofuMoveDir) > 0.01f;
     FacingDir facing = m_TofuAnimator.GetFacing();
 
-    if (m_TofuAbilityJ) {
-        m_TofuAnimator.Play(
-            facing == FacingDir::Left ? "dash_left" : "dash_right", true);
-    }
-    else if (m_TofuAbilityK) {
-        m_TofuAnimator.Play(
-            facing == FacingDir::Left ? "knock_left" : "knock_right", true);
-    }
-    else if (m_TofuAbilityL) {
-        m_TofuAnimator.Play(
-            facing == FacingDir::Up ? "squeeze_up" : "squeeze_down", true);
-    }
-    else if (isMoving) {
-        switch (facing) {
-        case FacingDir::Right: m_TofuAnimator.Play("walk_right"); break;
-        case FacingDir::Left:  m_TofuAnimator.Play("walk_left");  break;
-        case FacingDir::Up:    m_TofuAnimator.Play("walk_up");    break;
-        case FacingDir::Down:  m_TofuAnimator.Play("walk_down");  break;
+    if (!m_TofuDashing) {
+        if (m_TofuAbilityK) {
+            m_TofuAnimator.Play(
+                facing == FacingDir::Left ? "knock_left" : "knock_right", true);
+        }
+        else if (m_TofuAbilityL) {
+            m_TofuAnimator.Play(
+                facing == FacingDir::Up ? "squeeze_up" : "squeeze_down", true);
+        }
+        else if (isMoving) {
+            switch (facing) {
+            case FacingDir::Right: m_TofuAnimator.Play("walk_right"); break;
+            case FacingDir::Left:  m_TofuAnimator.Play("walk_left");  break;
+            case FacingDir::Up:    m_TofuAnimator.Play("walk_up");    break;
+            case FacingDir::Down:  m_TofuAnimator.Play("walk_down");  break;
+            }
+        }
+        else {
+            switch (facing) {
+            case FacingDir::Right: m_TofuAnimator.Play("idle_right"); break;
+            case FacingDir::Left:  m_TofuAnimator.Play("idle_left");  break;
+            case FacingDir::Up:    m_TofuAnimator.Play("idle_up");    break;
+            case FacingDir::Down:  m_TofuAnimator.Play("idle_down");  break;
+            }
         }
     }
-    else {
-        switch (facing) {
-        case FacingDir::Right: m_TofuAnimator.Play("idle_right"); break;
-        case FacingDir::Left:  m_TofuAnimator.Play("idle_left");  break;
-        case FacingDir::Up:    m_TofuAnimator.Play("idle_up");    break;
-        case FacingDir::Down:  m_TofuAnimator.Play("idle_down");  break;
-        }
-    }
-
     m_TofuAnimator.Update(deltaTime);
 
     // Track Toast movement
@@ -665,6 +747,65 @@ void GameScene::OnUpdate(float deltaTime)
     }
 
     m_ToastAnimator.Update(deltaTime);
+
+    // Update Grandma animation based on guard state
+    // Update Grandma animation based on guard state
+    if (!GuardAISystem::GetGuards().empty())
+    {
+        const GuardData& guard = GuardAISystem::GetGuards()[0];
+        Entity* grandma = GetEntity(guard.entityID);
+
+        if (grandma)
+        {
+            bool grandmaMoving = (guard.state == GuardState::Patrol ||
+                guard.state == GuardState::Alerted ||
+                guard.state == GuardState::Searching);
+
+            // Use guard's facing angle to determine direction
+            // guard.facing is in degrees, 0 = right, 90 = up, -90 = down, 180 = left
+            float angle = guard.facing;
+
+            // Determine facing direction from angle
+            FacingDir gFacing = FacingDir::Down; // default
+
+            if (angle > -45.0f && angle <= 45.0f)   gFacing = FacingDir::Right;
+            else if (angle > 45.0f && angle <= 135.0f)  gFacing = FacingDir::Up;
+            else if (angle > 135.0f || angle <= -135.0f) gFacing = FacingDir::Left;
+            else if (angle > -135.0f && angle <= -45.0f)  gFacing = FacingDir::Down;
+
+            // Debug
+            static FacingDir lastFacing = FacingDir::Down;
+            if (gFacing != lastFacing) {
+                std::cout << "[Grandma] Facing changed: " << (int)gFacing
+                    << " angle: " << angle << "\n";
+                lastFacing = gFacing;
+            }
+
+            if (grandmaMoving)
+            {
+                switch (gFacing) {
+                case FacingDir::Down:  m_GrandmaAnimator.Play("walk_down");  break;
+                case FacingDir::Up:    m_GrandmaAnimator.Play("walk_up");    break;
+                case FacingDir::Left:  m_GrandmaAnimator.Play("walk_left");  break;
+                case FacingDir::Right: m_GrandmaAnimator.Play("walk_right"); break;
+                }
+            }
+            else
+            {
+                switch (gFacing) {
+                case FacingDir::Down:  m_GrandmaAnimator.Play("idle_down");  break;
+                case FacingDir::Up:    m_GrandmaAnimator.Play("idle_up");    break;
+                case FacingDir::Left:  m_GrandmaAnimator.Play("idle_left");  break;
+                case FacingDir::Right: m_GrandmaAnimator.Play("idle_right"); break;
+                }
+            }
+
+            // Set flipX for right facing
+            // We handle this in render
+        }
+    }
+
+    m_GrandmaAnimator.Update(deltaTime);
 }
 
 void GameScene::OnRenderGL()
@@ -695,6 +836,7 @@ void GameScene::OnRenderGL()
             // Draw sprite — scale up from 50px to world units
             // 50px / 16px per unit = ~3 units wide
             glm::vec2 spriteSize = { 3.0f, 3.0f };
+
 
             m_Renderer->DrawFrame(
                 entity.transform.position,
@@ -731,11 +873,64 @@ void GameScene::OnRenderGL()
             continue;
         }
 
+        // Grandma — animated sprite
+        // Grandma — animated sprite
+        if (entity.name.find("Grandma") != std::string::npos)
+        {
+            AnimationFrame frame = m_GrandmaAnimator.GetCurrentFrame();
+
+            bool      flipX = false;
+            glm::vec4 tint = glm::vec4(1.0f);
+
+            if (!GuardAISystem::GetGuards().empty())
+            {
+                const GuardData& guard = GuardAISystem::GetGuards()[0];
+                float angle = guard.facing;
+
+                flipX = (angle > -45.0f && angle <= 45.0f);
+
+                // Debug
+                static float lastAngle = -999.0f;
+                if (std::abs(angle - lastAngle) > 1.0f) {
+                    std::cout << "[Grandma] angle=" << angle
+                        << " flipX=" << flipX << "\n";
+                    lastAngle = angle;
+                }
+
+                if (guard.state == GuardState::Alerted)
+                    tint = glm::vec4(1.5f, 0.5f, 0.5f, 1.0f);
+                else if (guard.state == GuardState::Suspicious)
+                    tint = glm::vec4(1.5f, 1.2f, 0.5f, 1.0f);
+            }
+
+            m_Renderer->DrawFrame(
+                entity.transform.position,
+                m_GrandmaAnimator.GetWorldSize(),
+                0.0f,
+                m_GrandmaAnimator.GetTextureID(),
+                frame.uvMin,
+                frame.uvMax,
+                tint,
+                flipX
+            );
+            continue;
+        }
+        if (!GuardAISystem::GetGuards().empty())
+        {
+            const GuardData& guard = GuardAISystem::GetGuards()[0];
+            static float lastAngle = -999.0f;
+            if (std::abs(guard.facing - lastAngle) > 1.0f)
+            {
+                std::cout << "[Grandma Render] Facing angle: " << guard.facing
+                    << " flipX: " << (guard.facing > -45.0f && guard.facing <= 45.0f)
+                    << "\n";
+                lastAngle = guard.facing;
+            }
+        }
+
         // All other entities — colored quads as before
         glm::vec4 color = { 0.8f, 0.8f, 0.8f, 1.0f };
-        if (entity.name.find("Toast") != std::string::npos) color = { 0.95f, 0.85f, 0.60f, 1.0f };
         if (entity.name.find("Guard") != std::string::npos) color = { 0.80f, 0.20f, 0.20f, 1.0f };
-        if (entity.name.find("Grandma") != std::string::npos) color = { 0.80f, 0.20f, 0.20f, 1.0f };
         if (entity.name.find("Carrot") != std::string::npos) color = { 1.00f, 0.55f, 0.10f, 1.0f };
 
         if (entity.id == m_ActiveBunnyID)
@@ -932,6 +1127,7 @@ void GameScene::OnExit()
     m_Tilemap.Unload();
     m_TofuAnimator.Shutdown();
     m_ToastAnimator.Shutdown();
+    m_GrandmaAnimator.Shutdown();
     delete m_Scene;
     m_Scene = nullptr;
 

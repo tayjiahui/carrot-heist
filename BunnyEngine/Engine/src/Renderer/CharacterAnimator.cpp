@@ -20,10 +20,10 @@ void CharacterAnimator::UpdateFacing(glm::vec2 moveDir)
 {
     if (glm::length(moveDir) < 0.01f) return;
 
-    if (moveDir.x > 0.5f)  m_Facing = FacingDir::Right;
-    else if (moveDir.x < -0.5f) m_Facing = FacingDir::Left;
-    else if (moveDir.y > 0.5f)  m_Facing = FacingDir::Up;
-    else if (moveDir.y < -0.5f) m_Facing = FacingDir::Down;
+    if (moveDir.x > 0.5f) { m_Facing = FacingDir::Right; m_FlipX = true; }
+    else if (moveDir.x < -0.5f) { m_Facing = FacingDir::Left;  m_FlipX = false; }
+    else if (moveDir.y > 0.5f) { m_Facing = FacingDir::Up;    m_FlipX = false; }
+    else if (moveDir.y < -0.5f) { m_Facing = FacingDir::Down;  m_FlipX = false; }
 }
 
 unsigned int CharacterAnimator::GetTextureID() const

@@ -31,7 +31,8 @@ public:
         unsigned int     textureID,
         const glm::vec2& uvMin,
         const glm::vec2& uvMax,
-        const glm::vec4& tint = glm::vec4(1.0f));
+        const glm::vec4& tint = glm::vec4(1.0f),
+        bool flipX = false);
 
 private:
     unsigned int m_VAO = 0;
