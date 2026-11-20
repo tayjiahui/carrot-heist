@@ -1,6 +1,8 @@
 #pragma once
 #include <functional>
 
+class Texture;
+
 class PauseMenu
 {
 public:
@@ -27,6 +29,14 @@ private:
     PauseMenu() = default;
 
     bool m_Active = false;
+
+    // Pixel-art pause menu textures, loaded on first draw (needs the GL context)
+    void LoadTextures();
+    bool     m_TexturesLoaded = false;
+    Texture* m_Background = nullptr;
+    Texture* m_BtnResume = nullptr;
+    Texture* m_BtnGuide = nullptr;
+    Texture* m_BtnMainMenu = nullptr;
 
     std::function<void()> m_OnResume;
     std::function<void()> m_OnMainMenu;

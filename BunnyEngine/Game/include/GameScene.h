@@ -14,6 +14,7 @@
 #include "DialogueSystem.h"
 #include <unordered_map>
 #include "Renderer/CharacterAnimator.h"
+#include "Renderer/Texture.h"
 
 class GameScene : public IScene
 {
@@ -47,6 +48,12 @@ public:
     glm::vec2 m_TofuDashDir = { 0.0f, 0.0f };
 
     CharacterAnimator m_GrandmaAnimator;
+
+    // Pixel-art carrot pickup sprite
+    Texture* m_CarrotTex = nullptr;
+
+    // Master Whiskers (NPC) sprite: tofu.png drawn at double bunny size
+    Texture* m_WhiskersTex = nullptr;
     glm::vec2         m_GrandmaMoveDir = { 0.0f, 0.0f };
 
 private:

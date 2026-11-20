@@ -125,6 +125,10 @@ void Renderer2D::DrawSprite(const glm::vec2& position,
     glBindTexture(GL_TEXTURE_2D, textureID);
 
     glBindVertexArray(m_VAO);
+    // DrawFrame writes per-frame UVs into the shared VBO, so restore the
+    // full-texture UVs here or this sprite would show the last frame drawn
+    glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(s_QuadVertices), s_QuadVertices);
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindVertexArray(0);
 

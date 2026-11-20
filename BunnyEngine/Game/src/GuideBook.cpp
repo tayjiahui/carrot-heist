@@ -57,7 +57,7 @@ void GuideBook::RenderImGui(float vpX, float vpY, float vpW, float vpH)
     );
 
     // Scale book to fit viewport
-    float bookW = 768.0f;
+    float bookW = 775.0f;   // Bookpg*.png are 775 x 480
     float bookH = 480.0f;
     float scaleX = (vpW * 0.9f) / bookW;
     float scaleY = (vpH * 0.9f) / bookH;
@@ -77,62 +77,29 @@ void GuideBook::RenderImGui(float vpX, float vpY, float vpW, float vpH)
         ImVec2(0, 1), ImVec2(1, 0)
     );
 
-    float btnW = 75.0f * scale;
-    float btnH = 43.0f * scale;
-    float margin = 16.0f * scale;
-
-    // --- Prev button ---
-    // Bottom LEFT of left page
-    if (m_CurrentPage > 0 && m_PrevTexture)
-    {
-        float prevX = bookX + margin;
-        float prevY = bookY + scaledH - btnH - margin;
-
-        // Push zero padding so image fills the button exactly
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.15f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1, 1, 1, 0.25f));
-
-        ImGui::SetCursorScreenPos(ImVec2(prevX, prevY));
-        if (ImGui::ImageButton(
-            "##prevpage",
-            (ImTextureID)(uintptr_t)m_PrevTexture->GetID(),
-            ImVec2(btnW, btnH),
-            ImVec2(0, 1), ImVec2(1, 0)))
+    // Page-turn buttons: the carrot arrows are drawn into the page art
+    // (Bookpg*.png, 775 x 480), so these are invisible click areas placed
+    // over them, in page pixels, with a soft highlight on hover.
+    auto PageButton = [&](const char* id, float px0, float py0, float px1, float py1) -> bool
         {
-            PrevPage();
-        }
+            ImVec2 min(bookX + px0 * scale, bookY + py0 * scale);
+            ImVec2 max(bookX + px1 * scale, bookY + py1 * scale);
 
-        ImGui::PopStyleVar();
-        ImGui::PopStyleColor(3);
-    }
+            ImGui::SetCursorScreenPos(min);
+            bool clicked = ImGui::InvisibleButton(id, ImVec2(max.x - min.x, max.y - min.y));
+            if (ImGui::IsItemHovered())
+                dl->AddRectFilled(min, max, IM_COL32(255, 255, 255, 45), 8.0f * scale);
+            return clicked;
+        };
 
-    // --- Next button ---
-    // Bottom RIGHT of right page
-    if (m_CurrentPage < (int)m_PageTextures.size() - 1 && m_NextTexture)
-    {
-        float nextX = bookX + scaledW - btnW - margin;
-        float nextY = bookY + scaledH - btnH - margin;
+    // --- Prev: carrot at the bottom left of the left page ---
+    if (m_CurrentPage > 0 && PageButton("##prevpage", 78.0f, 376.0f, 140.0f, 422.0f))
+        PrevPage();
 
-        ImGui::SetCursorScreenPos(ImVec2(nextX, nextY));
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.15f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1, 1, 1, 0.25f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
-
-        if (ImGui::ImageButton(
-            "##nextpage",
-            (ImTextureID)(uintptr_t)m_NextTexture->GetID(),
-            ImVec2(btnW, btnH),
-            ImVec2(0, 1), ImVec2(1, 0)))
-        {
-            NextPage();
-        }
-
-        ImGui::PopStyleVar();
-        ImGui::PopStyleColor(3);
-    }
+    // --- Next: carrot at the bottom right of the right page ---
+    if (m_CurrentPage < (int)m_PageTextures.size() - 1 &&
+        PageButton("##nextpage", 648.0f, 376.0f, 710.0f, 422.0f))
+        NextPage();
 
     // --- Close button --- top right of book
     if (m_CloseTexture)

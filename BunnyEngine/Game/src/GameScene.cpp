@@ -91,7 +91,7 @@ void GameScene::OnEnter()
             {
                 auto& e = m_Scene->AddEntity(obj.name);
                 e.transform.position = { worldX, worldY };
-                e.transform.scale = { 0.5f, 0.5f };
+                e.transform.scale = { 1.0f, 1.0f };
             }
         }
 
@@ -237,6 +237,14 @@ void GameScene::OnEnter()
 
     // Init Grandma animator
     m_GrandmaAnimator.Init("Assets/Textures/grandma_sprite.png", 59, 49);
+
+    // Carrot pickups use the pixel-art carrot sprite
+    if (!m_CarrotTex)
+        m_CarrotTex = new Texture("Assets/Textures/carrot.png");
+
+    // Master Whiskers uses the tofu.png bunny, drawn big
+    if (!m_WhiskersTex)
+        m_WhiskersTex = new Texture("Assets/Textures/tofu.png");
     m_GrandmaAnimator.SetWorldSize({ 3.0f, 2.5f });
 
     // Idle
@@ -817,6 +825,13 @@ void GameScene::OnRenderGL()
 
     if (!m_Scene) return;
 
+    // NPCs (Master Whiskers): 6 x 6 units, double the bunnies' 3 x 3
+    if (m_WhiskersTex)
+    {
+        for (const auto& npc : m_NPCs)
+            m_Renderer->DrawSprite(npc.position, { 6.0f, 6.0f }, 0.0f, m_WhiskersTex->GetID());
+    }
+
     for (auto& entity : m_Scene->GetEntities())
     {
         if (!entity.active) continue;
@@ -926,6 +941,18 @@ void GameScene::OnRenderGL()
                     << "\n";
                 lastAngle = guard.facing;
             }
+        }
+
+        // Carrots: pixel-art sprite instead of a coloured quad
+        if (m_CarrotTex && entity.name.find("Carrot") != std::string::npos)
+        {
+            m_Renderer->DrawSprite(
+                entity.transform.position,
+                entity.transform.scale,
+                entity.transform.rotation,
+                m_CarrotTex->GetID()
+            );
+            continue;
         }
 
         // All other entities — colored quads as before
